@@ -47,7 +47,7 @@ print( text.get_content() )
 
 '''
 #返回的是 Address类的元组:
-#(Address(display_name='朱继东', username='cometear', domain='163.com'),)
+#(Address(display_name='zhujidong', username='test', domain='163.com'),)
 print( msg['To'].addresses )
 
 #访问元组的一个元素的值
