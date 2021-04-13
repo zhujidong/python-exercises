@@ -15,9 +15,10 @@ class stu(object):
     def __repr__(self):
         return "这是由__repr__()返回的"
 
+    def __call__(self):
+        return "call"
 
 s = stu()
+print(stu()())
 
-print( len(s))
-print( s )
 
