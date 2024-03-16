@@ -20,7 +20,46 @@ from email.headerregistry import Address
 #from email.policy import default
 #from email.parser import BytesParser, Parser
 
-#from ssl import SSLError
+from ssl import SSLError
+
+
+class ImapHelper(object):
+
+    def __init__(self) -> None:
+
+        config = ConfigParser()
+        config.read( os.path.join(sys.path[0], "mail.ini"), encoding='utf_8')
+        self.username = config['mail']['username']
+        self.password = config['mail']['password']
+        self.imaphost = config['mail']['imaphost']
+        self.imapport = config['mail']['imapport']
+        self.imap = None        
+
+
+    def __enter__(self):
+        """ 
+        登录imap收件服务，将句柄赋值给实例变量self.imap 
+        *此方法只会被 with...as 语句块调用
+
+        :return: 本类的实例对像
+        """
+        
+        self.imap = imaplib.IMAP4_SSL(self.imaphost, self.imapport)
+        self.imap.login(self.username, self.password)
+        tag = self.imap._new_tag() 
+        self.imap.send(tag + b' ID ("name" "zbot" "version" "1.0" "vendor" "J.D.zhu")\r\n')
+        ''' 网易服务器要求客户端发送一个ID命令，否则认为是不安全的。
+            #imap求每条命令前有一个标签，以便异步响应，所以调用imap._new_tag()生成；
+            #要以\r\n结尾，否则一直等待结束；这个通信是字节串，所以用 “ b ” 
+        '''
+        return self, self.imap.select()[1][0].decode() #默认参数是INBOX,返回: ( 状态，[b'邮件数量'] ) 
+
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        """ 
+        with...as语句块结束后，会调用此方法，如果语句块没有异常，三个参数值是None
+        """
+        self.imap.logout()
 
 
 class MailHelper(object):
@@ -40,26 +79,29 @@ class MailHelper(object):
         self.imap = None
         self.smtp = None
 
-        print(self.username)
 
     def _login_imap(self):
         """ 
         登录imap收件服务，将句柄赋值给实例变量。 
-
+        
+        :return:
+            失败返回-1, 成功返回邮件的数量
         """
+        
         self.imap = imaplib.IMAP4_SSL(self.imaphost, self.imapport)
         self.imap.login(self.username, self.password)
-        
-        ''' 网易服务器要求客户端发送一个ID命令，否则认为是不安全的。
+        tag = self.imap._new_tag() 
+        self.imap.send(tag + b' ID ("name" "zbot" "version" "1.0" "vendor" "J.D.zhu")\r\n')
+        ''' 
+            网易服务器要求客户端发送一个ID命令，否则认为是不安全的。
             #imap求每条命令前有一个标签，以便异步响应，所以调用imap._new_tag()生成；
             #要以\r\n结尾，否则一直等待结束；这个通信是字节串，所以用 “ b ” 
         '''
-        tag = self.imap._new_tag() 
-        self.imap.send(tag + b' ID ("name" "zbot" "version" "1.0" "vendor" "J.D.zhu")\r\n')
-        
-        #selece()默认参数是INBOX,返回: ( 状态，[b'邮件数量'] ) 
-        print(F"登录邮箱成功，共{self.imap.select()[1][0].decode()}封邮件")
-        return None
+
+
+        #self.imap.select()[1][0].decode() #默认参数是INBOX,返回: ( 状态，[b'邮件数量'] ) 
+
+        return self.imap.select()
 
 
     def _login_smtp(self):
@@ -70,6 +112,11 @@ class MailHelper(object):
         self.smtp = smtplib.SMTP_SSL(self.smtphost, self.smtpport)
         self.smtp.login(self.username, self.password)
         return None
+
+
+    def __del__(self):
+        self.imap.logout()
+        self.smtp = None
 
 
 
