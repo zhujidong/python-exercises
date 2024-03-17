@@ -13,15 +13,15 @@ import os
 import sys
 from configparser import ConfigParser
 
-import smtplib
+#import smtplib
+#from email.message import EmailMessage
+#from email.headerregistry import Address
+#from ssl import SSLError
+
+
 import imaplib
-from email.message import EmailMessage
-from email.headerregistry import Address
-#from email.policy import default
-#from email.parser import BytesParser, Parser
-
-from ssl import SSLError
-
+from email.policy import default
+from email import message_from_bytes
 
 class ImapHelper(object):
 
@@ -33,10 +33,13 @@ class ImapHelper(object):
         self.password = config['mail']['password']
         self.imaphost = config['mail']['imaphost']
         self.imapport = config['mail']['imapport']
+        
         self.imap = None        
+        self.exc_type = None
+        self.exc_value = None
+        self.exc_tb = None
 
-
-    def __enter__(self):
+    def __enter__(self) -> object:
         """ 
         登录imap收件服务，将句柄赋值给实例变量self.imap 
         *此方法只会被 with...as 语句块调用
@@ -46,21 +49,46 @@ class ImapHelper(object):
         
         self.imap = imaplib.IMAP4_SSL(self.imaphost, self.imapport)
         self.imap.login(self.username, self.password)
+        ''' 
+        网易服务器要求客户端发送一个ID命令，否则认为是不安全的。
+        *imap求每条命令前有一个标签，以便异步响应，所以调用imap._new_tag()生成；
+        *要以\r\n结尾，否则一直等待结束；这个通信是字节串，所以用 “ b ” 
+        '''
         tag = self.imap._new_tag() 
         self.imap.send(tag + b' ID ("name" "zbot" "version" "1.0" "vendor" "J.D.zhu")\r\n')
-        ''' 网易服务器要求客户端发送一个ID命令，否则认为是不安全的。
-            #imap求每条命令前有一个标签，以便异步响应，所以调用imap._new_tag()生成；
-            #要以\r\n结尾，否则一直等待结束；这个通信是字节串，所以用 “ b ” 
-        '''
-        return self, self.imap.select()[1][0].decode() #默认参数是INBOX,返回: ( 状态，[b'邮件数量'] ) 
+        return self
 
 
     def __exit__(self, exc_type, exc_value, exc_tb):
         """ 
         with...as语句块结束后，会调用此方法，如果语句块没有异常，三个参数值是None
         """
+        self.exc_type = exc_type
+        self.exc_value = exc_value
+        self.exc_tb = exc_tb
         self.imap.logout()
 
+
+    def get_mail(self, part='BODY[HEADER]'):
+        '''
+        读取新邮件
+        '''
+
+        #默认参数是INBOX,返回: ( 状态，[b'邮件数量'] ) 
+        self.imap.select()[1][0].decode() 
+        #response是一个列表；第一个元素是‘空格分隔的邮件号’
+        status, response = self.imap.search(None, '(UNSEEN)') 
+        unread_msg_nums = response[0].split() 
+
+        # BODY[ ]相当于RFC822，返回的是全部邮件内容,BODY[HEADER]是头部
+        _, response = self.imap.fetch( unread_msg_nums[0], part ) 
+        
+        #从字节串生成 EmailMessage 消息类
+        #如果是BODY[HEADER]也可以生成这个消息实例,其它可能不行.
+        #msg = BytesParser(policy=default).parsebytes(response[0][1])
+        #message_from_bytes只是imap为使用方便,实际也是调用上边在方法
+        msg = message_from_bytes(response[0][1], policy=default)
+        print(msg.get('subject'))
 
 class MailHelper(object):
     

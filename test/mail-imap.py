@@ -3,8 +3,10 @@
 
 import imaplib
 
-from email.parser import BytesHeaderParser, BytesParser, Parser
 from email.policy import default
+from email.parser import BytesParser
+
+
 
 #连接服务器；权限认证
 imap = imaplib.IMAP4_SSL( 'imap.163.com', '993' )
