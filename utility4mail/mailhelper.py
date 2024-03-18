@@ -69,26 +69,35 @@ class ImapHelper(object):
         self.imap.logout()
 
 
-    def get_mail(self, part='BODY[HEADER]'):
+    def get_mails(self, parts='BODY[HEADER]', criterion='(UNSEEN)') -> list:
         '''
-        读取新邮件
-        '''
+        读取收件箱的邮件内容
+        :param:
+            parts:str, 给IMAP4.fetch()默认为读取邮件头部信息'BODY[HEADER]'
+                还可以是'BODY[]'邮件全部信息,其它类型的message_from_bytes应该不能解码
+            criterion:str,给IMAP4.search()的参数. 默认为未读邮件'(UNSEEN)'
+        :return:
+            list: 邮件内容的列表, []空表示没有相关邮件
+        '''   
 
-        #默认参数是INBOX,返回: ( 状态，[b'邮件数量'] ) 
-        self.imap.select()[1][0].decode() 
+        #选择邮箱,默认参数是INBOX,返回: ( 状态，[b'邮件数量'] ) 
+        self.imap.select()
         #response是一个列表；第一个元素是‘空格分隔的邮件号’
-        status, response = self.imap.search(None, '(UNSEEN)') 
-        unread_msg_nums = response[0].split() 
+        _, resp = self.imap.search(None, criterion) 
+        numbers = resp[0].split() 
 
-        # BODY[ ]相当于RFC822，返回的是全部邮件内容,BODY[HEADER]是头部
-        _, response = self.imap.fetch( unread_msg_nums[0], part ) 
-        
-        #从字节串生成 EmailMessage 消息类
-        #如果是BODY[HEADER]也可以生成这个消息实例,其它可能不行.
-        #msg = BytesParser(policy=default).parsebytes(response[0][1])
-        #message_from_bytes只是imap为使用方便,实际也是调用上边在方法
-        msg = message_from_bytes(response[0][1], policy=default)
-        print(msg.get('subject'))
+        mails = []
+        for number in numbers:
+            # BODY[ ]相当于RFC822，返回的是全部邮件内容,BODY[HEADER]是头部
+            status, response = self.imap.fetch(number, parts) 
+            #从字节串生成 EmailMessage 消息类
+            #如果是BODY[HEADER]也可以生成这个消息实例,其它可能不行.
+            #mail = BytesParser(policy=default).parsebytes(response[0][1])
+            #message_from_bytes只是imap为使用方便,实际也是调用上边在方法
+            mail = message_from_bytes(response[0][1], policy=default)
+            mails.append(mail)
+        return mails            
+
 
 class MailHelper(object):
     

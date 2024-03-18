@@ -10,4 +10,7 @@ if __name__ == '__main__':
 
     #print(MailHelper()._login_imap())
     with ImapHelper() as m:
-        m.get_mail()
+        wht = m.get_mails('BODY[HEADER]', '(FROM "mail@service.netease.com")')
+
+    for w in wht:
+        print(w.get('subject'))
