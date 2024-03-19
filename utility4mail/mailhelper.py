@@ -21,7 +21,7 @@ from configparser import ConfigParser
 
 import imaplib
 from email.policy import default
-from email import message_from_bytes
+from email.parser import BytesParser
 
 class ImapHelper(object):
 
@@ -74,7 +74,7 @@ class ImapHelper(object):
         读取收件箱的邮件内容
         :param:
             parts:str, 给IMAP4.fetch()默认为读取邮件头部信息'BODY[HEADER]'
-                还可以是'BODY[]'邮件全部信息,其它类型的message_from_bytes应该不能解码
+                    BODY[ ]相当于RFC822，返回的是全部邮件内容
             criterion:str,给IMAP4.search()的参数. 默认为未读邮件'(UNSEEN)'
         :return:
             list: 邮件内容的列表, []空表示没有相关邮件
@@ -88,15 +88,21 @@ class ImapHelper(object):
 
         mails = []
         for number in numbers:
-            # BODY[ ]相当于RFC822，返回的是全部邮件内容,BODY[HEADER]是头部
             status, response = self.imap.fetch(number, parts) 
-            #从字节串生成 EmailMessage 消息类
-            #如果是BODY[HEADER]也可以生成这个消息实例,其它可能不行.
-            #mail = BytesParser(policy=default).parsebytes(response[0][1])
-            #message_from_bytes只是imap为使用方便,实际也是调用上边在方法
-            mail = message_from_bytes(response[0][1], policy=default)
-            mails.append(mail)
+            mails.append(response[0][1])
         return mails            
+
+
+    def trans_header(self, bmail):
+        '''
+        转换头部信息
+        :param:
+            bmail:字节串,应该是标准的头部或全部信息
+        :return:
+            EmailMessage消息对像
+        '''
+        return BytesParser(policy=default).parsebytes(bmail, headersonly=True)
+
 
 
 class MailHelper(object):
