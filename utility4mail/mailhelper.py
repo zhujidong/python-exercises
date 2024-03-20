@@ -86,11 +86,11 @@ class ImapHelper(object):
         _, resp = self.imap.search(None, criterion) 
         numbers = resp[0].split() 
 
-        mails = []
+        bmails = []
         for number in numbers:
             status, response = self.imap.fetch(number, parts) 
-            mails.append(response[0][1])
-        return mails            
+            bmails.append(response[0][1])
+        return bmails            
 
 
     def trans_header(self, bmail):
