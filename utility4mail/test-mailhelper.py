@@ -12,11 +12,11 @@ def master_order():
     config.read( os.path.join(sys.path[0], "mail.ini"), encoding='utf_8')
     master = config['mail']['master']
     
-    #读取今天的邮件
+    #读取今天的邮件，只取最新的13个
     with ImapHelper() as m:
         #today = time.strftime('%d-%b-%Y')
         today = "15-Mar-2024"
-        bmails = m.get_mails('BODY[HEADER]', F'(SINCE "{today}")')
+        bmails = m.get_mails('BODY[HEADER]', F'(SINCE "{today}")', 13)
 
     order = []
     for bmail in bmails:

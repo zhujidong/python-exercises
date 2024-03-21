@@ -69,13 +69,14 @@ class ImapHelper(object):
         self.imap.logout()
 
 
-    def get_mails(self, parts='BODY[HEADER]', criterion='(UNSEEN)') -> list:
+    def get_mails(self, parts='BODY[HEADER]', criterion='(UNSEEN)', last=0) -> list:
         '''
         读取收件箱的邮件内容
         :param:
             parts:str, 给IMAP4.fetch()默认为读取邮件头部信息'BODY[HEADER]'
                     BODY[ ]相当于RFC822，返回的是全部邮件内容
             criterion:str,给IMAP4.search()的参数. 默认为未读邮件'(UNSEEN)'
+            last:读取最后（最新）收到的几个邮件。如果缺省或者大于邮件数量，则读取全部
         :return:
             list: 邮件内容的列表, []空表示没有相关邮件
         '''   
@@ -84,10 +85,14 @@ class ImapHelper(object):
         self.imap.select()
         #response是一个列表；第一个元素是‘空格分隔的邮件号’
         _, resp = self.imap.search(None, criterion) 
-        numbers = resp[0].split() 
-
+        numbers = resp[0].split()
+        #取最新的几个邮件ID
+        if last>0 and last<len(numbers):
+            numbers = numbers[-(last):]
+    
         bmails = []
-        for number in numbers:
+        #以新旧顺序先读取
+        for number in reversed(numbers):
             status, response = self.imap.fetch(number, parts) 
             bmails.append(response[0][1])
         return bmails            
