@@ -6,49 +6,26 @@ zhujidong 2021 Copyright(c), WITHOUT WARRANTY OF ANY KIND.
 
 '''
 
-#import time
-#import random
-
-import os
-import sys
-from configparser import ConfigParser
-
-#import smtplib
-#from email.message import EmailMessage
-#from email.headerregistry import Address
-#from ssl import SSLError
-
-
-import imaplib
+from imaplib import IMAP4_SSL
 from email.policy import default
 from email.parser import BytesParser
 
 class ImapHelper(object):
 
-    def __init__(self) -> None:
+    def __init__(self, host, port, username, password) -> None:
+        '''
+        登录imap收件服务器，将句柄赋值给实例变量self.imap
+        设置实例变量存储由with语句（在__exit__中传递过来）返回的执行信息
+        '''
 
-        config = ConfigParser()
-        config.read( os.path.join(sys.path[0], "mail.ini"), encoding='utf_8')
-        self.username = config['mail']['username']
-        self.password = config['mail']['password']
-        self.imaphost = config['mail']['imaphost']
-        self.imapport = config['mail']['imapport']
-        
         self.imap = None        
         self.exc_type = None
         self.exc_value = None
         self.exc_tb = None
+        self.error = None #错误信息
 
-    def __enter__(self) -> object:
-        """ 
-        登录imap收件服务，将句柄赋值给实例变量self.imap 
-        *此方法只会被 with...as 语句块调用
-
-        :return: 本类的实例对像
-        """
-        
-        self.imap = imaplib.IMAP4_SSL(self.imaphost, self.imapport)
-        self.imap.login(self.username, self.password)
+        self.imap = IMAP4_SSL(host, port)
+        self.imap.login(username, password)
         ''' 
         网易服务器要求客户端发送一个ID命令，否则认为是不安全的。
         *imap求每条命令前有一个标签，以便异步响应，所以调用imap._new_tag()生成；
@@ -56,6 +33,13 @@ class ImapHelper(object):
         '''
         tag = self.imap._new_tag() 
         self.imap.send(tag + b' ID ("name" "zbot" "version" "1.0" "vendor" "J.D.zhu")\r\n')
+        
+        
+    def __enter__(self) -> object:
+        """ 
+        *此方法只会被 with...as 语句块调用
+        :return: 本类的实例对像
+        """
         return self
 
 
@@ -71,14 +55,15 @@ class ImapHelper(object):
 
     def get_mails(self, parts='BODY[HEADER]', criterion='(UNSEEN)', last=0) -> list:
         '''
-        读取收件箱的邮件内容
+        读取收件箱的邮件内容，返回邮件列表
+        
         :param:
             parts:str, 给IMAP4.fetch()默认为读取邮件头部信息'BODY[HEADER]'
-                    BODY[ ]相当于RFC822，返回的是全部邮件内容
+                    BODY[]相当于RFC822，返回的是全部邮件内容
             criterion:str,给IMAP4.search()的参数. 默认为未读邮件'(UNSEEN)'
-            last:读取最后（最新）收到的几个邮件。如果缺省或者大于邮件数量，则读取全部
+            last:读取最后（最新）收到的几个邮件。如果缺省或者大于邮件数量，则读取全部邮件
         :return:
-            list: 邮件内容的列表, []空表示没有相关邮件
+            bmails: 邮件内容的列表,内容是未经解析的字节串。 []空表示没有相关邮件
         '''   
 
         #选择邮箱,默认参数是INBOX,返回: ( 状态，[b'邮件数量'] ) 
@@ -109,6 +94,14 @@ class ImapHelper(object):
         return BytesParser(policy=default).parsebytes(bmail, headersonly=True)
 
 
+
+# -----old------------------
+#import time
+#import random
+#import smtplib
+#from email.message import EmailMessage
+#from email.headerregistry import Address
+#from ssl import SSLError
 
 class MailHelper(object):
     

@@ -44,15 +44,3 @@ class ConfigReader(ConfigParser):
         for key, value in _items:
             _dict[key] = value
         return _dict
-
-
-if __name__ == '__main__':
-
-    cfg = ConfigReader()
-    print("get dict:", cfg.getdict('cmd_dict'))
-
-    print("get str:", cfg.get('settings', 'port'))
-    print("get int:", cfg.getint('settings', 'port'))
-    
-    print("get str:", cfg.get('settings', 'sent'))
-    print("get boolean:", cfg.getboolean('settings', 'sent'))
