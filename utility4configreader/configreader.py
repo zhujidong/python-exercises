@@ -48,3 +48,30 @@ class ConfigReader(ConfigParser):
         for key, value in _items:
             _dict[key] = value
         return _dict
+
+
+    def getschedule(self, section) -> list[tuple]:
+        '''
+        为 Schedule() 提供的按周循环的计划任务表
+        *含义及其在配置文件中的格式和见 utility$schedule.config.ini
+        
+        :return: 返回排好序的格式如下
+        [   (1, ['600', '06:00', '22:00']), 
+            (3, ['09:00', '14:00', '17:00']), 
+            (7, ['08:30', '10:30', '13:30', '15:30', '17:30', '20:00']) ]
+        
+        '''
+        _items = self.items(section)
+        
+        #整理成按星期排序的计划列表
+        temp ={}
+        for sche in _items:
+            #转换成以星期几为键的字典，以消除重复的计划
+            week = sche[0].replace(' ', '').split(',')
+            table = sche[1].replace(' ', '').split(',')
+            for w in week:
+                temp[int(w)] = table
+        
+        #排序,生成,返回
+        return sorted(temp.items(), key=lambda x:x[0])
+

@@ -17,6 +17,8 @@ class Schedule(object):
     
     主要方法：
     reg_thread（），注册一个任务，即可按计划运行此任务。
+        ***其中一个重要的参数,即任务的计划时间表,定义方法见config.ini, 
+        ***作为参数传入的格式由 ConfigReader.getschedule()方法提供,其格式见getschedule()方法内说明
     list_threads(),列出已经注册的任务名称和计划表
     close_threads(),关闭所有线程，退出主程序时调用此方法。
     pause_thread()，按名字暂停某个任务。
@@ -35,6 +37,7 @@ class Schedule(object):
             retry:tuple(int,int)，线程执行失败时，重试次数与时间间隔（默认重试1次，隔360秒后重试）
             errors:int,记录线程执行失败次数
             handle:线程的句柄，供取消等使用
+            statu:int, 1,正常, 0 暂停
         '''
 
     def reg_thread( self, name:str, fun:object, param:tuple, 
@@ -49,7 +52,8 @@ class Schedule(object):
             run_now:bool,注册计划任务后是否立即执行一次，再按按计划执行
             其它参数相关信息，见__init__()。
         '''
-        thread = {'fun':fun, 'param':param, 'schedule':schedule, 'retry':retry, 'errors':0, 'handle':None}
+        thread = {  'fun':fun, 'param':param, 'schedule':schedule, 
+                    'retry':retry, 'errors':0, 'handle':None, 'statu':1}
         self.threads[name] = thread
         self._run_thread(name, run_now)
         return None
@@ -114,30 +118,31 @@ class Schedule(object):
         info = 0
         if name in self.threads.keys():
             self.threads[name]['handle'].cancel()
+            self.threads[name]['statu'] = 0
             info = F'"{name}"任务已暂停。'
         else:
             info = F'"{name}"任务不存在。'
         return info
 
     def restart_thread(self, name) -> None:
-        '''
-        重启某个计划的任务
-        '''
+        ''' 重启某个计划的任务 '''
         info = 0
-        if name in self.threads.keys():
+        if name in self.threads.keys() and self.threads[name]['statu']==0:
+            self.threads[name]['statu'] = 1
             self._run_thread(name, run_now=False)
             info = F'"{name}"任务重启完成。'
         else:
-            info = F'"{name}"任务不存在。'
+            info = F'"{name}"任务不存在或状态正常不用重启。'
         return info
 
 
     def run_thread(self, name) -> str:
-        '''
-        立即运行一次某个已注册的任务
-        '''
+        ''' 立即运行一次某个已注册的任务 '''
         info = 0
         if name in self.threads.keys():
+            #不取消就会多一个线程,且handle被这次新的覆盖而失去控制
+            self.threads[name]['handle'].cancel()
+            self.threads[name]['statu'] = 1 #如果的暂停的任务,会变为正常
             self._run_thread(name, run_now=True)
             info = F'"{name}"立即运行任务完成。'
         else:
@@ -146,14 +151,14 @@ class Schedule(object):
 
 
     def list_threads(self) -> None:
-        #for key, values in self
-        return None
+        ''' 列出运行的计划任务信息 '''
+        for key, value in self.threads.items():
+            print(key,'状态:', '正常' if value['statu']==1 else "暂停")
+            print(value['schedule'])
 
 
     def close_threads(self) -> None:
-        '''
-        取消所有线程，退出程序前调用
-        '''
+        ''' 取消所有线程，退出程序前调用 '''
         for thread in self.threads.values():
             if thread['handle']:
                 thread['handle'].cancel()
@@ -162,50 +167,14 @@ class Schedule(object):
 
     @staticmethod
     def _get_interval(schedule:list[tuple]) -> tuple:
-        """
+        '''
         根据计划schedule（元组列表），计算现在到下次计划间隔的秒数。
         
         :param:
-            schedule：执行任务的计划表，是两个元素的元组列表。如
-                [ ('6,7', '09:00, 14:00, 17:00'), 
-                  ('1,5', '08:30, 10:30, 13:30, 15:30, 17:30, 20:00'), 
-                  ('3', '3600, 06:00, 22:00') ]
-                具体实现的功能和含义见下面config.ini文件中样式说明，
-                用ConfigParser实例的items(“my_schedule”)方法读出即是上面schedule格式
-                                
-                （config.ini文件格式）
-                # -*- coding:utf_8 -*-
-                [my_schedule]
-                #一星期内每天配置不同的计划方式，按星期循环
-                #等号左边代表星期几，1代表星期一，7代表星期日，星期几若重复，后面会覆盖前面的设置
-
-                #定点执行：要求HH:MM格式，且从小到大排序
-                6,7 = 09:00, 14:00, 17:00
-                1,5 = 08:30, 10:30, 13:30, 15:30, 17:30, 20:00    
-
-                #间隔执行：3600秒执行一次，仅在06:00——22:00之间执行
-                3 = 3600, 06:00, 22:00
-                
+            schedule：执行任务的计划表，定义方法见 config.ini
         :return: 
             至下次计划的间隔秒数, 下次计划的日期时间
-        """
         
-        #整理成按星期排序的计划列表
-        temp ={}
-        for sche in schedule:
-            #转换成以星期几为键的字典，以消除重复的计划
-            week = sche[0].replace(' ', '').split(',')
-            table = sche[1].replace(' ', '').split(',')
-            for w in week:
-                temp[int(w)] = table
-        schedule = sorted(temp.items(),key=lambda x:x[0])
-        #print("整理后的格式为：", schedule)
-        '''
-            [ (1, ['08:30', '10:30', '13:30', '15:30', '17:30', '20:00']), 
-              (3, ['3600', '06:00', '22:00']), 
-              (5, ['08:30', '10:30', '13:30', '15:30', '17:30', '20:00']), 
-              (6, ['09:00', '14:00', '17:00']), 
-              (7, ['09:00', '14:00', '17:00']) ]
         '''
 
         #获取当前时间戳，星期几，日期，时间

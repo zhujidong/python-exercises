@@ -17,14 +17,9 @@ def read_config():
     计划任务的所需的配置文件格式
     '''
     cfg = ConfigReader() #为空默认是程序启动目录下config.ini
-    my_schedule = cfg.items("scheduleB")
+    my_schedule = cfg.getschedule("scheduleA")
     print("从配置文件读出的计划格式是:\r\n", my_schedule)
-    '''
-        计划的格式是如下的元组列表,含义见 config.ini
-        [('6,7', '09:00, 14:00, 17:00'), 
-         ('1,5', '08:30, 10:30, 13:30, 15:30, 17:30, 20:00'), 
-         ('3', '3600, 06:00, 22:00') ]
-    '''
+
     return my_schedule
 
 
@@ -57,8 +52,8 @@ def task2(arg):
 
 def sche():
     sche = Schedule()
-    sche.reg_thread('taskone', task1, ('OK',), ([('6', '60, 01:00, 20:00'),]), (1,10),run_now=False)
-    sche.reg_thread('二', task2, ('二',), ([('6', '80, 01:00, 20:00'),]), (0,),True)
+    sche.reg_thread('taskone', task1, ('OK',), ([('6', '60, 01:00, 22:00'),]), (1,10),run_now=False)
+    sche.reg_thread('二', task2, ('二',), ([('6', '80, 01:00, 21:00'),]), (0,),True)
 
     while True:
         str = input()
@@ -83,8 +78,12 @@ def sche():
             rs = sche.run_thread(str)
             print(rs)
 
+        elif str=="l":
+            sche.list_threads()
+            
 
-#read_config()
+
+read_config()
 #sche_time()
-sche()
+#sche()
     
