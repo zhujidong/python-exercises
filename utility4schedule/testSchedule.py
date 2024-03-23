@@ -1,21 +1,23 @@
 # -*- coding:utf_8 -*-
 
-import os
-import sys
-from configparser import ConfigParser
-
 import time
 import random
+
+from os import path as ospath
+from sys import path as syspath
+#将系统查找路径加入到第2人位置。第1个保持为调用python解释器即程序启动路径
+syspath.insert(1, ospath.dirname(ospath.dirname(__file__)))
+
+from utility4configreader.configreader import ConfigReader
 from schedule import Schedule
 
 
 def read_config():
     '''
-    测试计划的格式
+    计划任务的所需的配置文件格式
     '''
-    config = ConfigParser()
-    config.read( os.path.join(sys.path[0], "config.ini"), encoding='utf_8')
-    my_schedule = config.items("my_schedule")
+    cfg = ConfigReader() #为空默认是程序启动目录下config.ini
+    my_schedule = cfg.items("scheduleB")
     print("从配置文件读出的计划格式是:\r\n", my_schedule)
     '''
         计划的格式是如下的元组列表,含义见 config.ini
@@ -30,7 +32,7 @@ def sche_time():
     '''
     测试生成计划下次运行时间
     '''
-    interval, nextdatetime =  Schedule.get_interval(read_config())
+    interval, nextdatetime =  Schedule._get_interval(read_config())
     print("\r\n测试调用方法生成下次计划运行时间：")
     print("下次计划间隔：", interval)
     print("下次计划时间：", time.strftime("%m月%d日%H:%M", nextdatetime))
@@ -55,26 +57,34 @@ def task2(arg):
 
 def sche():
     sche = Schedule()
-    sche.reg_thread('task-one', task1, ('OK',), ([('5', '20, 01:00, 20:00'),]), (1,10),run_now=False)
-    sche.reg_thread('任务二', task2, ('二',), ([('5', '60, 01:00, 20:00'),]), (0,),True)
+    sche.reg_thread('taskone', task1, ('OK',), ([('6', '60, 01:00, 20:00'),]), (1,10),run_now=False)
+    sche.reg_thread('二', task2, ('二',), ([('6', '80, 01:00, 20:00'),]), (0,),True)
 
     while True:
-        print ("输入q退出")
-        print ("输入任务名字取消任务")
         str = input()
         if str=='q':
             sche.close_threads()
             break
-        else:
-            rs = sche.cancel_thread(str)
+        elif str=="p":
+            print ("输入任务名字暂停任务：")
+            str = input()
+            rs = sche.pause_thread(str)
+            print(rs)
+
+        elif str=="a":
+            print ("输入任务名字重启任务：")
+            str = input()
+            rs = sche.restart_thread(str)
+            print(rs)
+
+        elif str=="r":
+            print ("输入任务名字立即运行任务：")
+            str = input()
+            rs = sche.run_thread(str)
             print(rs)
 
 
-if __name__ == '__main__':
-
-    #read_config()
-
-    #sche_time()
-
-    sche()
+#read_config()
+#sche_time()
+sche()
     

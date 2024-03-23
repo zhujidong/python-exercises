@@ -14,29 +14,38 @@ from threading import Timer
 class Schedule(object):
     '''
     管理计划任务；每个任务以线程方式运行。
-    *注册的任务函数，只能以元组的形式接受位置参数*
+    
+    主要方法：
+    reg_thread（），注册一个任务，即可按计划运行此任务。
+    list_threads(),列出已经注册的任务名称和计划表
+    close_threads(),关闭所有线程，退出主程序时调用此方法。
+    pause_thread()，按名字暂停某个任务。
+    restart_thread()，恢复某个任务的执行 //未完成
     '''
 
     def __init__(self) -> None:
 
         self.threads = {}
         '''
-        记录所有计划任务线程的信息，key为给任务起的“名字”，value为线程信息。
+        记录reg_thread（）时所有计划任务线程的信息，key为给任务起的“名字”，value为线程信息。
         value仍是一个字典，其key值含义如下：
             fun:str,要注册的任务线程的方法函数
-            param:tuple,任务线程的参数，**只能以元组的形式传递位置参数给fun **
-            schedule:str,任务执行的计划，计划的定义方式见get_interval()方法
+            param:tuple,任务线程的参数，**只能传递位置参数给fun **
+            schedule:str,任务执行的计划，计划的定义方式见config.ini和 ConfigReader.getschedule()方法
             retry:tuple(int,int)，线程执行失败时，重试次数与时间间隔（默认重试1次，隔360秒后重试）
             errors:int,记录线程执行失败次数
             handle:线程的句柄，供取消等使用
         '''
 
-    def reg_thread(self, name:str, fun:object, param:tuple, schedule:str, retry:tuple=(1,360),run_now:bool=False) -> None:
+    def reg_thread( self, name:str, fun:object, param:tuple, 
+                    schedule:str, retry:tuple=(1,360),run_now:bool=False) -> None:
         '''
-        注册一个计划任务， *要求补注册的任凭执行成功返为True,失败返回False
+        将一个方法函数，注册为一个计划任务
+        *要求此方法函数返回一个逻辑值，真代表成功，假代表任务失败。
+        *只能传给任务函数位置参数
 
         :param:
-            name:str,计划任务的名称
+            name:str,为计划任务的起的名称
             run_now:bool,注册计划任务后是否立即执行一次，再按按计划执行
             其它参数相关信息，见__init__()。
         '''
@@ -67,7 +76,7 @@ class Schedule(object):
             rs = self.threads[name]['fun'](*self.threads[name]['param'])
                         
             #调用方法生成到下次的执行任务的间隔秒数
-            interval, nextdatetime = Schedule.get_interval(self.threads[name]['schedule'])
+            interval, nextdatetime = Schedule._get_interval(self.threads[name]['schedule'])
             nextdatetime = time.strftime("%m月%d日%H:%M", nextdatetime)
 
             #根据任务执行的返回结果，调整下次执行间隔和提示信息
@@ -86,7 +95,7 @@ class Schedule(object):
                     self.threads[name]['errors'] = 0
         #非立即运行的任务，调用得到时间间隔即可
         else:
-            interval, nextdatetime = Schedule.get_interval(self.threads[name]['schedule'])
+            interval, nextdatetime = Schedule._get_interval(self.threads[name]['schedule'])
             nextdatetime = time.strftime("%m月%d日%H:%M", nextdatetime)
             info = F'“{name}”任务将按计划将于{nextdatetime}运行。'
 
@@ -95,6 +104,49 @@ class Schedule(object):
         self.threads[name]['handle'] = Timer(interval, self._run_thread, args=(name, True))
                                        #计划时间后才运行，所以通常给本方法传递true以立即运行任务
         self.threads[name]['handle'].start()
+        return None
+
+
+    def pause_thread(self, name) -> str:
+        '''
+        暂停某个计划的任务
+        '''
+        info = 0
+        if name in self.threads.keys():
+            self.threads[name]['handle'].cancel()
+            info = F'"{name}"任务已暂停。'
+        else:
+            info = F'"{name}"任务不存在。'
+        return info
+
+    def restart_thread(self, name) -> None:
+        '''
+        重启某个计划的任务
+        '''
+        info = 0
+        if name in self.threads.keys():
+            self._run_thread(name, run_now=False)
+            info = F'"{name}"任务重启完成。'
+        else:
+            info = F'"{name}"任务不存在。'
+        return info
+
+
+    def run_thread(self, name) -> str:
+        '''
+        立即运行一次某个已注册的任务
+        '''
+        info = 0
+        if name in self.threads.keys():
+            self._run_thread(name, run_now=True)
+            info = F'"{name}"立即运行任务完成。'
+        else:
+            info = F'"{name}"任务不存在。'
+        return info
+
+
+    def list_threads(self) -> None:
+        #for key, values in self
         return None
 
 
@@ -108,21 +160,8 @@ class Schedule(object):
         return None
 
 
-    def cancel_thread(self, name) -> None:
-        '''
-        取消某个计划的任务
-        '''
-        info = 0
-        if name in self.threads.keys():
-            self.threads[name]['handle'].cancel()
-            info = F'"{name}"任务已取消。'
-        else:
-            info = F'"{name}"任务不存在。'
-        return info
-
-
     @staticmethod
-    def get_interval(schedule:list[tuple]) -> tuple:
+    def _get_interval(schedule:list[tuple]) -> tuple:
         """
         根据计划schedule（元组列表），计算现在到下次计划间隔的秒数。
         

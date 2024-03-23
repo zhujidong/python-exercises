@@ -1,5 +1,10 @@
 # -*- coding:utf_8 -*-
 
-from utility4configreader.configreader import ConfigReader
+import os
+def acc(*args):
+	print(*args)
+	print( os.path.join('abc',*args))
+acc('asfdsf', '000')
 
-print( ConfigReader().getdict('settings') )
+
+
