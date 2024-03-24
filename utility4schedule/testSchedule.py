@@ -2,13 +2,6 @@
 
 import time
 import random
-
-from os import path as ospath
-from sys import path as syspath
-#将系统查找路径加入到第2人位置。第1个保持为调用python解释器即程序启动路径
-syspath.insert(1, ospath.dirname(ospath.dirname(__file__)))
-
-from utility4configreader.configreader import ConfigReader
 from schedule import Schedule
 
 
@@ -52,8 +45,8 @@ def task2(arg):
 
 def sche():
     sche = Schedule()
-    sche.reg_thread('taskone', task1, ('OK',), ([('6', '60, 01:00, 22:00'),]), (1,10),run_now=False)
-    sche.reg_thread('二', task2, ('二',), ([('6', '80, 01:00, 21:00'),]), (0,),True)
+    sche.reg_thread('taskone', task1, ('OK',), ([(6, ['60', '01:00', '22:00']),]), (1,10),run_now=False)
+    sche.reg_thread('二', task2, ('二',), ([(6, ['80','01:00','21:00']),]), (0,),True)
 
     while True:
         str = input()
@@ -82,8 +75,16 @@ def sche():
             sche.list_threads()
             
 
+if __name__ == '__main__':
 
-read_config()
-#sche_time()
-#sche()
+    from os import path as ospath
+    from sys import path as syspath
+    #将最先调用python解释器的脚本,即启动程序所在目录的上级目录,加入到系统查找路径
+    syspath.append(ospath.dirname(ospath.dirname(__file__)))
+    from utility4configreader.configreader import ConfigReader
+
+
+    #read_config()
+    #sche_time()
+    sche()
     

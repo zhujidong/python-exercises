@@ -6,34 +6,40 @@ zhujidong 2021 Copyright(c), WITHOUT WARRANTY OF ANY KIND.
 
 '''
 
-from imaplib import IMAP4_SSL
+
+# *** 上级目录在 sys.path 中才能够找到包
+from utility4configreader.configreader import ConfigReader
+#from ssl import SSLError
+
+
 from email.policy import default
 from email.parser import BytesParser
+from imaplib import IMAP4_SSL
+#from imaplib.IMAP4 import error as imapError #任何错误都将引发该异常。
 
 class ImapHelper(object):
 
-    def __init__(self, host, port, username, password) -> None:
+    def __init__(self) -> None:
         '''
         登录imap收件服务器，将句柄赋值给实例变量self.imap
         设置实例变量存储由with语句（在__exit__中传递过来）返回的执行信息
+
         '''
-
-        self.imap = None        
-        self.exc_type = None
-        self.exc_value = None
-        self.exc_tb = None
-        self.error = None #错误信息
-
-        self.imap = IMAP4_SSL(host, port)
-        self.imap.login(username, password)
+        _dict = ConfigReader().getdict('mail')
+        self.imap = IMAP4_SSL(_dict['imaphost'], _dict['imapport'])
+        self.imap.login(_dict['username'], _dict['password'])
+        _tag = self.imap._new_tag() 
+        self.imap.send(_tag + b' ID ("name" "zbot" "version" "1.0" "vendor" "J.D.zhu")\r\n')
         ''' 
         网易服务器要求客户端发送一个ID命令，否则认为是不安全的。
         *imap求每条命令前有一个标签，以便异步响应，所以调用imap._new_tag()生成；
         *要以\r\n结尾，否则一直等待结束；这个通信是字节串，所以用 “ b ” 
         '''
-        tag = self.imap._new_tag() 
-        self.imap.send(tag + b' ID ("name" "zbot" "version" "1.0" "vendor" "J.D.zhu")\r\n')
-        
+        self.exc_type = None
+        self.exc_value = None
+        self.exc_tb = None
+        self.error = None #错误信息
+
         
     def __enter__(self) -> object:
         """ 
@@ -50,6 +56,7 @@ class ImapHelper(object):
         self.exc_type = exc_type
         self.exc_value = exc_value
         self.exc_tb = exc_tb
+        self.imap.close()
         self.imap.logout()
 
 
@@ -95,70 +102,51 @@ class ImapHelper(object):
 
 
 
-# -----old------------------
-#import time
-#import random
-#import smtplib
-#from email.message import EmailMessage
-#from email.headerregistry import Address
-#from ssl import SSLError
 
-class MailHelper(object):
-    
+from email.message import EmailMessage
+from email.headerregistry import Address
+from smtplib import SMTP_SSL
+#from smtplib import SMTPException #OSError 的子类，它是本模块提供的所有其他异常的基类。
+
+class SmtpHelper(object):
+
     def __init__(self) -> None:
+        '''
+        登录SMTP服务器，将句柄赋值给实例变量self.smtp
+        设置实例变量存储由with语句（在__exit__中传递过来）返回的执行信息
 
-        config = ConfigParser()
-        config.read( os.path.join(sys.path[0], "mail.ini"), encoding='utf_8')
+        '''
+        _dict = ConfigReader().getdict('mail')
+        self.smtp = SMTP_SSL(_dict['smtphost'], _dict['smtpport'])
+        self.smtp.login(_dict['username'], _dict['password'])
 
-        self.username = config['mail']['username']
-        self.password = config['mail']['password']
-        self.smtphost = config['mail']['smtphost']
-        self.smtpport = config['mail']['smtpport']
-        self.imaphost = config['mail']['imaphost']
-        self.imapport = config['mail']['imapport']
+        self.exc_type = None
+        self.exc_value = None
+        self.exc_tb = None
+        self.error = None #错误信息
 
-        self.imap = None
-        self.smtp = None
-
-
-    def _login_imap(self):
+         
+    def __enter__(self) -> object:
         """ 
-        登录imap收件服务，将句柄赋值给实例变量。 
-        
-        :return:
-            失败返回-1, 成功返回邮件的数量
+        *此方法只会被 with...as 语句块调用
+        :return: 本类的实例对像
         """
-        
-        self.imap = imaplib.IMAP4_SSL(self.imaphost, self.imapport)
-        self.imap.login(self.username, self.password)
-        tag = self.imap._new_tag() 
-        self.imap.send(tag + b' ID ("name" "zbot" "version" "1.0" "vendor" "J.D.zhu")\r\n')
-        ''' 
-            网易服务器要求客户端发送一个ID命令，否则认为是不安全的。
-            #imap求每条命令前有一个标签，以便异步响应，所以调用imap._new_tag()生成；
-            #要以\r\n结尾，否则一直等待结束；这个通信是字节串，所以用 “ b ” 
-        '''
+        return self
 
 
-        #self.imap.select()[1][0].decode() #默认参数是INBOX,返回: ( 状态，[b'邮件数量'] ) 
-
-        return self.imap.select()
-
-
-    def _login_smtp(self):
-        '''
-        登录smtp发件服务器，将句柄赋值给实例变量
-
-        '''   
-        self.smtp = smtplib.SMTP_SSL(self.smtphost, self.smtpport)
-        self.smtp.login(self.username, self.password)
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        """ 
+        with...as语句块结束后，会调用此方法，如果语句块没有异常，三个参数值是None
+        """
+        self.exc_type = exc_type
+        self.exc_value = exc_value
+        self.exc_tb = exc_tb
+        self.smtp.quit()
         return None
 
 
-    def __del__(self):
-        self.imap.logout()
-        self.smtp = None
 
+"""-----old------------------
 
 
     def send_notice(self, fields, notice:list, name_email:list, max_size=0) -> int:
@@ -299,3 +287,4 @@ class MailHelper(object):
             except:
                 self.smtp = None
         return info
+"""

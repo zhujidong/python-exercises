@@ -13,9 +13,10 @@ from configparser import ConfigParser
 class ConfigReader(ConfigParser):
     ''' 
     读取配置文件,并转换数据格式 
-
+    
     '''
 
+    #默认是启动程序所在目录下的config.ini
     _CONFIG = 'config.ini'
 
     def __init__(self, *config:str) -> None:
