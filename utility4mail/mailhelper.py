@@ -14,6 +14,7 @@ from utility4configreader.configreader import ConfigReader
 
 from email.policy import default
 from email.parser import BytesParser
+from email.utils import parseaddr
 from imaplib import IMAP4_SSL
 #from imaplib.IMAP4 import error as imapError #任何错误都将引发该异常。
 
@@ -100,6 +101,12 @@ class ImapHelper(object):
         '''
         return BytesParser(policy=default).parsebytes(bmail, headersonly=True)
 
+    
+    def trans_addr(self, _from:str) -> tuple:
+        '''
+        将邮件中from发件人信息字符串转换为 ('username', 'useraddr@abc.com') 的元组
+        '''
+        return parseaddr(_from)
 
 
 
