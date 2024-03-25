@@ -18,10 +18,11 @@ class Executor(object):
 
     """
 
-    def __init__(self):
+    def __init__(self, *config):
         
-        self.cmd_dict = ConfigReader().getdict('cmdlist')
-        print(self.cmd_dict)
+        _cfg = ConfigReader(*config)
+        self.cmd_dict = _cfg.getdict('cmdlist')
+
     def exec_cmd(self, orders):
         for order in orders:
             if order in self.cmd_dict.keys():

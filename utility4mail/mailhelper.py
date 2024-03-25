@@ -19,13 +19,13 @@ from imaplib import IMAP4_SSL
 
 class ImapHelper(object):
 
-    def __init__(self) -> None:
+    def __init__(self, *config:str) -> None:
         '''
         登录imap收件服务器，将句柄赋值给实例变量self.imap
         设置实例变量存储由with语句（在__exit__中传递过来）返回的执行信息
 
         '''
-        _dict = ConfigReader().getdict('mail')
+        _dict = ConfigReader(*config).getdict('mail')
         self.imap = IMAP4_SSL(_dict['imaphost'], _dict['imapport'])
         self.imap.login(_dict['username'], _dict['password'])
         _tag = self.imap._new_tag() 
@@ -110,13 +110,13 @@ from smtplib import SMTP_SSL
 
 class SmtpHelper(object):
 
-    def __init__(self) -> None:
+    def __init__(self, *config) -> None:
         '''
         登录SMTP服务器，将句柄赋值给实例变量self.smtp
         设置实例变量存储由with语句（在__exit__中传递过来）返回的执行信息
 
         '''
-        _dict = ConfigReader().getdict('mail')
+        _dict = ConfigReader(*config).getdict('mail')
         self.smtp = SMTP_SSL(_dict['smtphost'], _dict['smtpport'])
         self.smtp.login(_dict['username'], _dict['password'])
 

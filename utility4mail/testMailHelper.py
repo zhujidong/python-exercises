@@ -54,6 +54,6 @@ if __name__ == '__main__':
     syspath.append(ospath.dirname(ospath.dirname(__file__)))
     from mailhelper import ImapHelper, SmtpHelper
     
-    #imap_test()
-    master_order()
-    #smtp_test()
+    imap_test()
+    #master_order()
+    smtp_test()

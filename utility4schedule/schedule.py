@@ -17,47 +17,53 @@ class Schedule(object):
     
     主要方法：
     reg_thread（），注册一个任务，即可按计划运行此任务。
-        ***其中一个重要的参数,即任务的计划时间表,定义方法见config.ini, 
-        ***作为参数传入的格式由 ConfigReader.getschedule()方法提供,其格式见getschedule()方法内说明
     list_threads(),列出已经注册的任务名称和计划表
     close_threads(),关闭所有线程，退出主程序时调用此方法。
     pause_thread()，按名字暂停某个任务。
-    restart_thread()，恢复某个任务的执行 //未完成
+    restart_thread()，恢复某个任务的执行
+
     '''
 
     def __init__(self) -> None:
 
         self.threads = {}
         '''
-        记录reg_thread（）时所有计划任务线程的信息，key为给任务起的“名字”，value为线程信息。
-        value仍是一个字典，其key值含义如下：
-            fun:str,要注册的任务线程的方法函数
-            param:tuple,任务线程的参数，**只能传递位置参数给fun **
-            schedule:str,任务执行的计划，计划的定义方式见config.ini和 ConfigReader.getschedule()方法
-                格式为:  [   (1, ['600', '06:00', '22:00']), 
-                            (3, ['09:00', '14:00', '17:00']), 
-                            (7, ['08:30', '10:30', '13:30', '15:30', '17:30', '20:00']) ]
-            retry:tuple(int,int)，线程执行失败时，重试次数与时间间隔（默认重试1次，隔360秒后重试）
-            errors:int,记录线程执行失败次数
-            handle:线程的句柄，供取消等使用
-            statu:int, 1,正常, 0 暂停
+        记录reg_thread（）时所有计划任务线程的信息，key为给任务起的“名字”.
+        value也是一个字典,记录线程相关信息，相关信息见reg_thread()。
+
         '''
 
     def reg_thread( self, name:str, fun:object, param:tuple, 
-                    schedule:str, retry:tuple=(1,360),run_now:bool=False) -> None:
+                    schedule:list[tuple], retry:tuple=(1,360),run_now:bool=False) -> None:
         '''
         将一个方法函数，注册为一个计划任务
-        *要求此方法函数返回一个逻辑值，真代表成功，假代表任务失败。
-        *只能传给任务函数位置参数
 
         :param:
-            name:str,为计划任务的起的名称
-            run_now:bool,注册计划任务后是否立即执行一次，再按按计划执行
-            其它参数相关信息，见__init__()。
+            name:str,为计划任务的起的名称，暂停、重启或立即执行此任务需用此名字索引，也是self.threads的key
+            
+            fun:str,要注册d成任务线程的函数方法。
+                *要求此函数方法执行失败返回错误信息字符串，成功返回0
+                *本方法中只能传给任务函数位置参数
+            param:tuple,任务线程的参数，**只能传递位置参数给fun **
+
+            schedule:list[tuple],任务执行的计划，定义方式见config.ini
+                读出后传入的格如下，可由ConfigReader.getschedule()方法得到：
+                [   (1, ['600', '06:00', '22:00']), 
+                    (3, ['09:00', '14:00', '17:00']), 
+                    (7, ['08:30', '10:30', '13:30', '15:30', '17:30', '20:00']) ]
+            
+            retry:tuple(int,int)，线程执行失败时，重试次数与时间间隔（默认重试1次，隔360秒后重试）
+            run_now:bool,计划划任务注册后是否立即执行一次，否则按计划执行
+
         '''
-        thread = {  'fun':fun, 'param':param, 'schedule':schedule, 
-                    'retry':retry, 'errors':0, 'handle':None, 'statu':1}
-        self.threads[name] = thread
+        self.threads[name] = {  'fun':fun, 'param':param, 'schedule':schedule, 'retry':retry, 
+                                'errors':0, 'handle':None, 'statu':1}
+        '''
+        serf.threads以计划名字name为key, value仍是字典，其它key含义如下
+        errors:int,记录线程执行失败次数
+        handle:线程的句柄，取消、重启，立即执行任务等使用
+        statu:int, 计划任务的状态，是否按计划执行1,正常, 0 暂停 
+        '''
         self._run_thread(name, run_now)
         return None
 
@@ -87,26 +93,31 @@ class Schedule(object):
             nextdatetime = time.strftime("%m月%d日%H:%M", nextdatetime)
 
             #根据任务执行的返回结果，调整下次执行间隔和提示信息
-            if rs:
+            if rs==0:
                 self.threads[name]['errors'] = 0
                 info = F'“{name}”任务执行完毕，下次计划于{nextdatetime}启动'
-            #任务执行中失败
-            else:
+            #任务执行中失败,且要求重试
+            elif self.threads[name]['retry'][0]>0:
                 self.threads[name]['errors'] += 1
                 #没达到重试次数，调整下次执行的间隔为重试间隔
                 if self.threads[name]['errors']  <= self.threads[name]['retry'][0]:
                     interval = self.threads[name]['retry'][1]
-                    info = F'”{name}“任务执行失败，将在{interval/60}分种后重启...'
+                    info = F'”{name}“执行失败：{rs}\n 任务将在{interval/60}分种后重启...'
                 else:
                     info = F'”{name}“任务已失败{self.threads[name]["errors"]}次，不再重试，将在下次计划时间（{nextdatetime}）启动。'
                     self.threads[name]['errors'] = 0
+                    #发送错误报告？
+            else:
+                info = F'”{name}“执行失败：{rs}...\n 将在下次计划时间（{nextdatetime}）启动。'
+                #发送错误报告？
+
         #非立即运行的任务，调用得到时间间隔即可
         else:
             interval, nextdatetime = Schedule._get_interval(self.threads[name]['schedule'])
             nextdatetime = time.strftime("%m月%d日%H:%M", nextdatetime)
             info = F'“{name}”任务将按计划将于{nextdatetime}运行。'
 
-        #使用Timer,设置在计划时间段后，以线程方式运行本方法
+        #实际是把自己生成一个线程，调用被注册的计划任务
         print(info,'\r\n----------------------------\r\n')
         self.threads[name]['handle'] = Timer(interval, self._run_thread, args=(name, True))
                                        #计划时间后才运行，所以通常给本方法传递true以立即运行任务

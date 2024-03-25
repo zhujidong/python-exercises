@@ -29,9 +29,9 @@ class ConfigReader(ConfigParser):
         '''
 
         #调用父类的三种方法，最新不用传递self了？
-        #super(ConfigReader,self).__init__()
+        super(ConfigReader,self).__init__()
         #ConfigParser.__init__(self)
-        super().__init__()
+        #super().__init__()
         
         if not config:
             config = (ConfigReader._CONFIG,)

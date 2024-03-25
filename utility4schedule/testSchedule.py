@@ -45,8 +45,8 @@ def task2(arg):
 
 def sche():
     sche = Schedule()
-    sche.reg_thread('taskone', task1, ('OK',), ([(6, ['60', '01:00', '22:00']),]), (1,10),run_now=False)
-    sche.reg_thread('二', task2, ('二',), ([(6, ['80','01:00','21:00']),]), (0,),True)
+    sche.reg_thread('taskone', task1, ('OK',), ([(1, ['30', '01:00', '22:00']),]), (1,10),run_now=False)
+    sche.reg_thread('二', task2, ('二',), ([(1, ['50','01:00','21:00']),]), (0,),True)
 
     while True:
         str = input()
