@@ -10,6 +10,18 @@ if __name__ == '__main__':
     #from utility4configreader.configreader import ConfigReader
     from executor import Executor
 
-    for i in Executor()._get_orders():
-        print(i)
+    ex = Executor()
+    rs = ex._get_orders()
+    for r in rs:
+        print(r)
+
+    _, rs = ex.exec_cmd()
+    print(rs)
+
+    _, rs = ex.exec_cmd()
+    print(rs)
+
+
+
+
 

@@ -41,8 +41,8 @@ class Schedule(object):
         :param:
             name:str,为计划任务的起的名称，暂停、重启或立即执行此任务需用此名字索引，也是self.threads的key
             
-            fun:str,要注册d成任务线程的函数方法。
-                *要求此函数方法执行失败返回错误信息字符串，成功返回0
+            fun:str,要注册成任务线程的函数方法。
+                *要求此方法返回一个元组，第一个元素为任务状态码，0,正常；第二个元素为任务相关信息（错误信息等）
                 *本方法中只能传给任务函数位置参数
             param:tuple,任务线程的参数，**只能传递位置参数给fun **
 
@@ -86,7 +86,7 @@ class Schedule(object):
             print(F'\r\n----------------------------\r\n{now}：”{name}“任务启动...')
             
             #运行计划的任务，成功返回真。      *此处只将元组展开成位置参数给要执行的方法*
-            rs = self.threads[name]['fun'](*self.threads[name]['param'])
+            rs, stdout = self.threads[name]['fun'](*self.threads[name]['param'])
                         
             #调用方法生成到下次的执行任务的间隔秒数
             interval, nextdatetime = Schedule._get_interval(self.threads[name]['schedule'])
@@ -95,20 +95,20 @@ class Schedule(object):
             #根据任务执行的返回结果，调整下次执行间隔和提示信息
             if rs==0:
                 self.threads[name]['errors'] = 0
-                info = F'“{name}”任务执行完毕，下次计划于{nextdatetime}启动'
+                info = F'“{name}”任务执行完毕:{stdout}，\n下次计划于{nextdatetime}启动'
             #任务执行中失败,且要求重试
             elif self.threads[name]['retry'][0]>0:
                 self.threads[name]['errors'] += 1
                 #没达到重试次数，调整下次执行的间隔为重试间隔
                 if self.threads[name]['errors']  <= self.threads[name]['retry'][0]:
                     interval = self.threads[name]['retry'][1]
-                    info = F'”{name}“执行失败：{rs}\n 任务将在{interval/60}分种后重启...'
+                    info = F'”{name}“执行失败：{stdout}\n 任务将在{interval/60}分种后重启...'
                 else:
                     info = F'”{name}“任务已失败{self.threads[name]["errors"]}次，不再重试，将在下次计划时间（{nextdatetime}）启动。'
                     self.threads[name]['errors'] = 0
                     #发送错误报告？
             else:
-                info = F'”{name}“执行失败：{rs}...\n 将在下次计划时间（{nextdatetime}）启动。'
+                info = F'”{name}“执行失败：{stdout}...\n 将在下次计划时间（{nextdatetime}）启动。'
                 #发送错误报告？
 
         #非立即运行的任务，调用得到时间间隔即可

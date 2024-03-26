@@ -8,6 +8,7 @@ zhujidong 2021 Copyright(c), WITHOUT WARRANTY OF ANY KIND.
 
 import time
 import subprocess as subp
+# subp.SubprocessError  #subprocess 所有异常类的基类
 
 # *** 上级目录在 sys.path 中才能够找到包
 from utility4configreader.configreader import ConfigReader
@@ -25,42 +26,71 @@ class Executor(object):
         self.cmd_dict = _cfg.getdict('cmdlist') #命令列表,只能发此列表中的别名
         self.master = _cfg.get('default', 'master') #可以发布命令的邮件地址
 
-        self.last_cmd = '' #最后一次邮件的命令
+        self.last_cmds = '' #最后一次邮件的命令
         self.last_time = 0 #最后一次邮件的时间戳 
+
 
     def exec_cmd(self):
         '''
         执行命令(必须是命令列表之中的)
         '''
 
-        orders = _get_orders()
-        for order in orders:
-            if order in self.cmd_dict.keys():
-                cmds = self.cmd_dict[order]
-                rs = subp.run(cmds.split(), capture_output=True, encoding='UTF-8')
-                print('\r\n------the return .stdout-------\r\n',rs.stdout)
-                print('\r\n------the return .stderror-------\r\n',rs.stderr)
+        cmds = self._get_orders()
+        rcode = 0
+        rmsg = ''
+        for cmd in cmds:
+            #此命令在列表之中
+            if cmd in self.cmd_dict.keys():
+                cmd = self.cmd_dict[cmd]
+                cmd_l = cmd.split()  #shlex.split() 复杂的也许需要此方法序列化
+                rs = subp.run(cmd_l, stdout=subp.PIPE, stderr=subp.STDOUT, encoding='UTF-8')
+                if rs.returncode!=0:
+                    rcode = rs.returncode
+                rmsg += 'args: ' + ' '.join(rs.args) + '\n'
+                rmsg += 'code: ' + str(rs.returncode) + '\n'
+                rmsg += 'stdout: ' + rs.stdout +'\n\n'
+                #多个命令，只记录最后一条的执行时间
+                self.last_time = time.time()
+                self.last_cmds = cmds
             else:
-                print(order,'命令不存在')
+                rmsg += F'{cmd}命令不存在\n'
+
+        if not rmsg:
+            rmsg ='当前没有需要执行的命令'
+        else:
+            #把执行结果发邮件
+            pass
+        return rcode, rmsg
+
 
     def _get_orders(self) -> dict:
         '''
-        读取 master 邮件头中的命令信息
-        返回 [(标题, 发件人地址, 时间戳),]
+        读取最新的5封邮件的头信息，将符合条件的命令邮件标题，拆分成命令列表
+
+        :return:
+            orders:list 命令列表。没找到符合条件地返回空
         '''
-        
+       
         orders = []
+        now = time.time()
+        #读取今天最新的五封邮件
         with ImapHelper('..','utility4mail','config.ini') as imap: #测试完这个配置文件放到一个主配置中,不再些放配置文件地址
             #读取今天最新的5个邮件
-            #today = time.strftime('%d-%b-%Y')
-            today = "15-Mar-2024"
+            today = time.strftime('%d-%b-%Y')
+            #today = "15-Mar-2024"
             bheads = imap.get_mails('BODY[HEADER]', F'(SINCE "{today}")', 5)
-            for bhd in bheads:
-                hd = imap.trans_header(bhd) #解析邮件头
-                s = hd.get('Subject')
-                f = imap.trans_addr(hd.get('From'))[1] #只要邮件地址
-                t = hd.get('Date')
-                _struct = time.strptime(t, "%a, %d %b %Y %H:%M:%S +0800")
-                t =time.mktime(_struct) #转为时间戳
-                orders.append((s, f, t))
+
+        #找到最新的，管理发送的，半小时内的，大于最后执行时间的（即没有执行过此命令）
+        for bhd in bheads:
+            hd = imap.trans_header(bhd) #解析邮件头
+            s = hd.get('Subject')
+            f = imap.trans_addr(hd.get('From'))[1] #只要邮件地址
+            t = hd.get('Date')
+            _struct = time.strptime(t, "%a, %d %b %Y %H:%M:%S +0800")
+            t =time.mktime(_struct) #转为时间戳
+            
+            # 是管理员发送的； 距今半小时内的；大于最后次执行命令的时间； 
+            if f==self.master and (now-t)<1800 and t>self.last_time:
+                orders = s.split("#")
+                break
         return  orders
