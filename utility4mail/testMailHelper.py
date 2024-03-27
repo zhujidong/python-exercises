@@ -5,19 +5,20 @@ import time
 
 def imap_test():
     with ImapHelper() as imap:
-        #today = time.strftime('%d-%b-%Y')
-        today = "15-Mar-2024"
+        today = time.strftime('%d-%b-%Y')
+        #today = "15-Mar-2024"
         wht = imap.get_mails('BODY[HEADER]', F'(SINCE "{today}")')
     
     for w in wht:
         t = imap.trans_header(w)
-        print(t.get('Subject'))
+        print(type(t))
+        print(t['Subject'])
         print(t.get('Date'))
 
 
 def smtp_test():
     with SmtpHelper() as smtp:
-        print('smtp ok')
+        smtp.send_mail('66461627@qq.com', '两个收人，就是个列表就可以邮件\n不用tostring行不', '两个收件人')
 
 
 if __name__ == '__main__':
@@ -29,4 +30,4 @@ if __name__ == '__main__':
     from mailhelper import ImapHelper, SmtpHelper
     
     #imap_test()
-    #master_order()    smtp_test()
+    smtp_test()

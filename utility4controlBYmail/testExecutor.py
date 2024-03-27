@@ -11,13 +11,6 @@ if __name__ == '__main__':
     from executor import Executor
 
     ex = Executor()
-    rs = ex._get_orders()
-    for r in rs:
-        print(r)
-
-    _, rs = ex.exec_cmd()
-    print(rs)
-
     _, rs = ex.exec_cmd()
     print(rs)
 

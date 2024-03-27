@@ -11,12 +11,12 @@ zhujidong 2021 Copyright(c), WITHOUT WARRANTY OF ANY KIND.
 from utility4configreader.configreader import ConfigReader
 #from ssl import SSLError
 
-
 from email.policy import default
 from email.parser import BytesParser
 from email.utils import parseaddr
 from imaplib import IMAP4_SSL
 #from imaplib.IMAP4 import error as imapError #任何错误都将引发该异常。
+
 
 class ImapHelper(object):
 
@@ -24,8 +24,8 @@ class ImapHelper(object):
         '''
         登录imap收件服务器，将句柄赋值给实例变量self.imap
         设置实例变量存储由with语句（在__exit__中传递过来）返回的执行信息
-
         '''
+
         _dict = ConfigReader(*config).getdict('mail')
         self.imap = IMAP4_SSL(_dict['imaphost'], _dict['imapport'])
         self.imap.login(_dict['username'], _dict['password'])
@@ -43,17 +43,17 @@ class ImapHelper(object):
 
         
     def __enter__(self) -> object:
-        """ 
-        *此方法只会被 with...as 语句块调用
+        '''
+        *此方法只会被 with...as 语句块调用, 为as提供一个值
         :return: 本类的实例对像
-        """
+        '''
         return self
 
 
     def __exit__(self, exc_type, exc_value, exc_tb):
-        """ 
-        with...as语句块结束后，会调用此方法，如果语句块没有异常，三个参数值是None
-        """
+        '''
+        with...as语句块是否正常结束后，会调用此方法，如果语句块没有异常，三个参数值是None
+        '''
         self.exc_type = exc_type
         self.exc_value = exc_value
         self.exc_tb = exc_tb
@@ -84,7 +84,7 @@ class ImapHelper(object):
             numbers = numbers[-(last):]
     
         bmails = []
-        #以新旧顺序先读取
+        #以新旧顺序先读取字节串
         for number in reversed(numbers):
             status, response = self.imap.fetch(number, parts) 
             bmails.append(response[0][1])
@@ -115,18 +115,20 @@ from email.headerregistry import Address
 from smtplib import SMTP_SSL
 #from smtplib import SMTPException #OSError 的子类，它是本模块提供的所有其他异常的基类。
 
+
 class SmtpHelper(object):
 
     def __init__(self, *config) -> None:
         '''
         登录SMTP服务器，将句柄赋值给实例变量self.smtp
         设置实例变量存储由with语句（在__exit__中传递过来）返回的执行信息
-
         '''
+
         _dict = ConfigReader(*config).getdict('mail')
         self.smtp = SMTP_SSL(_dict['smtphost'], _dict['smtpport'])
         self.smtp.login(_dict['username'], _dict['password'])
 
+        self.username = _dict['username']
         self.exc_type = None
         self.exc_value = None
         self.exc_tb = None
@@ -134,17 +136,17 @@ class SmtpHelper(object):
 
          
     def __enter__(self) -> object:
-        """ 
-        *此方法只会被 with...as 语句块调用
+        '''
+        *此方法只会被 with...as 语句块调用，为as提供一个值
         :return: 本类的实例对像
-        """
+        '''
         return self
 
 
     def __exit__(self, exc_type, exc_value, exc_tb):
-        """ 
-        with...as语句块结束后，会调用此方法，如果语句块没有异常，三个参数值是None
-        """
+        '''
+        with...as语句块不管是否正常结束，都会调用此方法，如果语句块没有异常，三个参数值是None
+        '''
         self.exc_type = exc_type
         self.exc_value = exc_value
         self.exc_tb = exc_tb
@@ -152,146 +154,21 @@ class SmtpHelper(object):
         return None
 
 
-
-"""-----old------------------
-
-
-    def send_notice(self, fields, notice:list, name_email:list, max_size=0) -> int:
-        '''
-        发送一条通知内容给接收人
-            
-        :param:
-            fields: Field类实例，属性名为字段名，值对应内容元组的索引
-            notice：通知信息元组
-            name_email：(收信人名称，email地址）的列表
-            max_size：允许附件大小，0为使用配置文件中设置的大小
-        :return:
-            int:发送成功的通知id
-        '''
-        msg = EmailMessage()
-        msg['Subject'] = notice[fields.title]
-        msg['From'] = Address(str(notice[fields.noticeid])+' -'+self.sender, addr_spec = self.username) 
-        receivers = []
-        header_to = []
-        for rece in name_email:
-            receivers.append(rece[1]) 
-            header_to.append( Address(rece[0], addr_spec=rece[1]) )
-        msg['To'] = header_to
-        
-        #纯文本邮件正文 
-        text = "很遗憾，您的客户端不支持HTML格式邮件，无法查看。"
-        msg.set_content(text)
-               
-        #html格式邮件正文
-        htmls =[]
-        htmls.append(self.html_top)
-        htmls.append(
-            F'''<table><tr><th>ID: </th><th>{notice[fields.noticeid]}</th></tr>
-            <tr><td>时间:</td><td>{notice[fields.pubdate]}</td></tr>
-            <tr><td>标题:</td><td>{notice[fields.title]}</td></tr>
-            <tr><td>部门:</td><td>{notice[fields.department]}</td></tr>
-            <tr><td>发/审:</td><td>{notice[fields.pubname]} / {notice[fields.reviewer]}</td></tr>
-            <tr><td>接收:</td><td>{notice[fields.receiver]}</td></tr>
-            <tr><td>正文:</td><td>{notice[fields.content] if notice[fields.content]!='null' else '[ 无正文 ]'}</td></tr>
-            <tr><td>附件:</td><td>{('应有'+str(notice[fields.amount])+'个，名称如下') if notice[fields.amount]>0 else ''}</td></tr>
-            <tr><td></td><td>{notice[fields.attname] if notice[fields.attname] else '[ 无附件 ]'}</td></tr></table><br/>'''
-        )
-        htmls.append(self.html_bottom)
-        msg.add_alternative(' '.join(htmls), subtype="html") 
-
-        #有附件，则添加附件
-        if notice[fields.amount] > 0:
-            am = Attachment(notice[fields.pubdate], notice[fields.noticeid])
-            try:            
-                filename_list = am.get_filename(max_size)
-                for filename in filename_list:
-                    base_name = am.base_name(filename)
-                    flag = filename[-8:]
-                    if flag == '-OVF.txt':
-                        base_name = '文件过大-' + base_name
-                        am_content = '此附件过大，无法通过邮件发送'.encode()
-                    elif flag == '-ZRO.txt':
-                        base_name = '文件为空-' + base_name
-                        am_content = '此附件为空，可能是下载时出错'.encode()
-                    else:
-                        with open(filename,'rb') as f:
-                            am_content = f.read()
-                    msg.add_attachment( 
-                        am_content, maintype = 'application', subtype = 'octet-stream', 
-                        filename = base_name
-                    )
-            except FileNotFoundError:
-                msg.add_attachment( 
-                    '附件丢失或未下载。可以发送xxx命令重新下载并发送给你。'.encode(),
-                    maintype = 'application', subtype = 'octet-stream', 
-                    filename = '附件丢失或未下载.txt'
-                )
-        #endif 添加附件完成
-
-        self._login_smtp()
-        self.smtp.sendmail(self.username, receivers, msg.as_string())
-        
-        try:
-            self.smtp.quit()
-        except (SSLError, smtplib.SMTPServerDisconnected):
-            self.smtp.close()
-        except:
-            self.smtp = None
-
-        return notice[fields.noticeid]
-
-
-    def send_msg(self, content:list[list], name_email:list[tuple], title:str) -> str:
+    def send_mail(self, to_addr:str or list, message:str, title:str) -> str:
         ''' 
         发送信息给收件人
         :param:
-            msg:list[list], 发送的信息，会被放在表格中发送
-            name_email：(name,email）组成的元组列表
+            to_addr:收件人地址。一个地址的字符串，或者是地址列表。
+            message:邮件内容，字符串。
+            title：邮件标题
         :return:
-            str: ’‘（null）表示成功，否则是错误信息
+
         '''   
         msg = EmailMessage()
         msg['Subject'] = title 
-        msg['From'] = Address(self.sender, addr_spec = self.username) 
-        receivers = [] #收件人email列表
-        header_to = [] #邮件内容中构造的收件人信息
-        for rece in name_email:
-            receivers.append(rece[1]) 
-            header_to.append( Address(rece[0], addr_spec=rece[1]) )
-        msg['To'] = header_to 
+        msg['From'] = Address(self.username, addr_spec = self.username) 
+        msg['To'] = to_addr 
+        msg.set_content(message)
+        self.smtp.sendmail(self.username, to_addr, msg.as_string())
         
-        #纯文本邮件正文 
-        text = "很遗憾，您的客户端不支持HTML格式邮件，无法查看。"
-        msg.set_content(text)
-               
-        #html格式邮件正文
-        htmls =[]
-        htmls.append(self.html_top)
-        htmls.append('<table>')
-        for line in content:
-            tr = '<tr>'
-            for td in line:
-                tr += F'<td>{td}</td>'
-            tr += '</tr>'
-            htmls.append(tr)
-        htmls.append('</table>')
-        htmls.append(self.html_bottom)
-        msg.add_alternative(' '.join(htmls), subtype="html") 
-
-        info = ''
-        try:
-            self._login_smtp()
-            self.smtp.sendmail( self.username, receivers, msg.as_string() )
-        except smtplib.SMTPException:
-            info = '邮件发送失败（发件服务器问题）。'
-        except:
-            info = '邮件发送失败（未知原因）。'
-        finally:
-            try:
-                self.smtp.quit()
-            except (SSLError, smtplib.SMTPServerDisconnected):
-                self.smtp.close()
-            except:
-                self.smtp = None
-        return info
-"""
+        return None

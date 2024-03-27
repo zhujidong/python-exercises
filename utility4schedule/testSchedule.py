@@ -35,18 +35,28 @@ def task1(arg):
     print("这是task1，首次传入的参数:",arg)
     print("任务将返回：",rs)
     #根据返回值判断任务执行是否失败，决定是否重试
-    return rs
+    if rs==1:
+        err = '随机失败'
+    else:
+        err = '随机成功'
+
+    return rs, err
 
 def task2(arg):
     rs = random.randint(0, 1)
     print("\r\n这是任务二，首次传入的参数:",arg)
     print("任务将返回：",rs)
-    return rs
+    if rs==1:
+        err = '任务二随机失败'
+    else:
+        err = '任务二随机成功'
+
+    return rs, err
 
 def sche():
     sche = Schedule()
-    sche.reg_thread('taskone', task1, ('OK',), ([(1, ['30', '01:00', '22:00']),]), (1,10),run_now=False)
-    sche.reg_thread('二', task2, ('二',), ([(1, ['50','01:00','21:00']),]), (0,),True)
+    sche.reg_thread('taskone', task1, ('OK',), ([(2, ['30', '01:00', '22:00']),]), (1,10),run_now=False)
+    sche.reg_thread('二', task2, ('二',), ([(2, ['50','01:00','21:00']),]), (0,),True)
 
     while True:
         str = input()
