@@ -26,7 +26,9 @@ class ImapHelper(object):
         设置实例变量存储由with语句（在__exit__中传递过来）返回的执行信息
         '''
 
-        _dict = ConfigReader(*config).getdict('mail')
+        self.config = config
+        _dict = ConfigReader(*self.config).getdict('mail')
+
         self.imap = IMAP4_SSL(_dict['imaphost'], _dict['imapport'])
         self.imap.login(_dict['username'], _dict['password'])
         _tag = self.imap._new_tag() 
@@ -124,7 +126,9 @@ class SmtpHelper(object):
         设置实例变量存储由with语句（在__exit__中传递过来）返回的执行信息
         '''
 
-        _dict = ConfigReader(*config).getdict('mail')
+        self.config = config
+        _dict = ConfigReader(*self.config).getdict('mail')
+
         self.smtp = SMTP_SSL(_dict['smtphost'], _dict['smtpport'])
         self.smtp.login(_dict['username'], _dict['password'])
 

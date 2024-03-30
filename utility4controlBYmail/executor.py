@@ -25,9 +25,9 @@ class Executor(object):
         '''
         可以给给出读取配置文件的路径
         '''
-
-        _cfg = ConfigReader(*config)
-        self.cmd_dict = _cfg.getdict('executor-cmdlist') #命令列表,只能发此列表中的别名
+        self.config = config
+        _cfg = ConfigReader(*self.config)
+        self.cmd_dict = _cfg.getdict('executor_cmdlist') #命令列表,只能发此列表中的别名
         self.master = _cfg.get('executor', 'master') #可以发布命令的邮件地址
 
         self.last_cmds = '' #最后一次邮件的命令
@@ -68,7 +68,7 @@ class Executor(object):
         if not rmsg:
             rmsg ='当前没有需要执行的命令'
         else:
-            with SmtpHelper() as smtp: 
+            with SmtpHelper(*self.config) as smtp: 
                 smtp.send_mail( self.master, rmsg, '#'.join(cmds)+'执行结果')
  
         return rcode, rmsg
@@ -86,7 +86,7 @@ class Executor(object):
         now = time.time()
 
         #读取今天最新的五封邮件头部
-        with ImapHelper() as imap:
+        with ImapHelper(*self.config) as imap:
             today = time.strftime('%d-%b-%Y')
             #today = "15-Mar-2024"
             bheads = imap.get_mails('BODY[HEADER]', F'(SINCE "{today}")', 5)
@@ -103,6 +103,6 @@ class Executor(object):
             # 是管理员发送的； 距今半小时内的；大于最后次执行命令的时间； 
             if f==self.master and (now-t)<1800 and t>self.last_time:
                 #将多个命令拆分为列表
-                orders = s.split("#")
+                orders = s.replace(' ','').split("#")
                 break
         return  orders

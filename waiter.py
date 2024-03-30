@@ -12,9 +12,9 @@ from utility4schedule.schedule import Schedule
 from utility4configreader.configreader import ConfigReader
 from utility4controlBYmail.executor import Executor
 
-
-waiter = Executor().exec_cmd
-table = ConfigReader().getschedule('executor_table')
+_config = 'config.ini'
+waiter = Executor(_config).exec_cmd
+table = ConfigReader(_config).getschedule('executor_table')
 sche = Schedule()
 sche.reg_thread('waiter', waiter, (), table, (0,0),run_now=False)
 

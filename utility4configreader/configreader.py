@@ -16,7 +16,7 @@ class ConfigReader(ConfigParser):
     
     '''
 
-    #默认是启动程序所在目录下的config.ini
+    #默认是__main__所在目录下的config.ini
     _CONFIG = 'config.ini'
 
     def __init__(self, *config:str) -> None:
