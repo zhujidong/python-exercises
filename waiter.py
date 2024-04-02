@@ -8,41 +8,13 @@ zhujidong 2021 Copyright(c), WITHOUT WARRANTY OF ANY KIND.
 
 
 
-from utility4schedule.schedule import Schedule
 from utility4configreader.configreader import ConfigReader
 from utility4controlBYmail.executor import Executor
 
 _config = 'config.ini'
-waiter = Executor(_config).exec_cmd
-table = ConfigReader(_config).getschedule('executor_table')
-sche = Schedule()
-sche.reg_thread('waiter', waiter, (), table, (0,0),run_now=False)
+_, info = Executor(_config).exec_cmd()
+print(info)
 
-while True:
-    str = input()
-    if str=='q':
-        sche.close_threads()
-        break
-    
-    elif str=="p":
-        print ("输入任务名字暂停任务：")
-        str = input()
-        rs = sche.pause_thread(str)
-        print(rs)
-
-    elif str=="a":
-        print ("输入任务名字重启任务：")
-        str = input()
-        rs = sche.restart_thread(str)
-        print(rs)
-
-    elif str=="r":
-        print ("输入任务名字立即运行任务：")
-        str = input()
-        rs = sche.run_thread(str)
-        print(rs)
-
-    elif str=="l":
-        sche.list_threads()
-
-
+#以上检查邮件执行命令后退出。改由systemd 的：
+# my-mcc.service 单元注册为系统任务（非自动启动）。
+# my-mcc.timer 单元控制计划时行

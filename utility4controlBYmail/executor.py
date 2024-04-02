@@ -7,7 +7,10 @@ zhujidong 2021 Copyright(c), WITHOUT WARRANTY OF ANY KIND.
 '''
 
 
+
 import time
+from os import path as ospath
+from sys import path as syspath
 import subprocess as subp
 # subp.SubprocessError  #subprocess 所有异常类的基类
 
@@ -29,21 +32,22 @@ class Executor(object):
         _cfg = ConfigReader(*self.config)
         self.cmd_dict = _cfg.getdict('executor_cmdlist') #命令列表,只能发此列表中的别名
         self.master = _cfg.get('executor', 'master') #可以发布命令的邮件地址
+        self.tmpfile = ospath.join(syspath[0], _cfg.get('executor', 'tmpfile_name'))
 
-        self.last_cmds = '' #最后一次邮件的命令
-        self.last_time = 0 #最后一次邮件的时间戳 
-
-
-    def exec_cmd(self):
+    def exec_cmd(self, cmds=None):
         '''
         执行命令(必须是命令列表之中的)
+        
+        :param:
+            cmds:列表，元素需是命令列表中定义好的。缺省调用self._get_orders()从邮件中读取
 
         :return:
             rcode:int，命令退出状态码，0正常，-N 被信息N中断
             rmsg:str, subprocess.run（）返回对像的字符值，包括 args,sdout（错误信息stderr也被定向到stdout了）
         '''
 
-        cmds = self._get_orders()
+        if not cmds:
+            cmds = self._get_orders()
         rcode = 0
         rmsg = ''
         for cmd in cmds:
@@ -57,13 +61,9 @@ class Executor(object):
                 rmsg += 'args: ' + ' '.join(rs.args) + '\n'
                 rmsg += 'code: ' + str(rs.returncode) + '\n'
                 rmsg += 'stdout: ' + rs.stdout +'\n\n'
-                
-                #多个命令，只记录最后一条的执行时间
-                self.last_time = time.time()
-                self.last_cmds = cmds
             else:
                 rmsg += F'{cmd}命令不存在\n'
-            time.sleep(13)
+            time.sleep(7)
 
         if not rmsg:
             rmsg ='当前没有需要执行的命令'
@@ -90,6 +90,12 @@ class Executor(object):
             today = time.strftime('%d-%b-%Y')
             #today = "15-Mar-2024"
             bheads = imap.get_mails('BODY[HEADER]', F'(SINCE "{today}")', 5)
+        
+        #读读临时文件时间，此文件创建之后的邮件才是没被执行的新邮件
+        try:
+            last_runtime = ospath.getmtime(self.tmpfile)
+        except:
+            last_runtime = 0
 
         #找到最新的，管理员发送的，半小时内的，大于最后执行时间的（即没有执行过此命令）
         for bhd in bheads:
@@ -100,9 +106,12 @@ class Executor(object):
             _struct = time.strptime(t, "%a, %d %b %Y %H:%M:%S +0800")
             t =time.mktime(_struct) #转为时间戳
             
-            # 是管理员发送的； 距今半小时内的；大于最后次执行命令的时间； 
-            if f==self.master and (now-t)<1800 and t>self.last_time:
-                #将多个命令拆分为列表
+            # 是管理员发送的； 距今半小时内的；大于上次读取的邮件时间； 
+            if f==self.master and (now-t)<1800 and t>last_runtime:
+                #创建此文件只为记录创建它时的的这个时间，此时间前的最新邮件将被执行
+                with open(self.tmpfile, 'w') as f:
+                    pass
+                #将多个命令拆分为列表，传给执行函数
                 orders = s.replace(' ','').split("#")
                 break
         return  orders
