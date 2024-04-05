@@ -1,0 +1,23 @@
+# -*- coding:utf_8 -*-
+
+
+[mail]
+#mailhelper模块所用字典的键名
+
+account = 'mailusername@163.com'
+display_name = '张三' #此账号发件时显示的名字
+password = 'ASSPYNRYHGFMPBIM'
+
+smtphost = 'smtp.163.com'
+smtpport = 465
+
+imaphost = 'imap.163.com'
+imapport = 993
+#-----------------------------
+
+
+[receiver]
+#收件人字典，等号左边将显示为收件人的名字
+#使用ASCII字线数字-_之外的应该加引号
+'李四' = '4234251627@qq.com'
+'王五' = 'ong@live.com'

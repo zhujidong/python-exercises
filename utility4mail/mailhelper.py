@@ -7,30 +7,29 @@ zhujidong 2021 Copyright(c), WITHOUT WARRANTY OF ANY KIND.
 '''
 
 
-# *** 上级目录在 sys.path 中才能够找到包
-from utility4configreader.configreader import ConfigReader
 #from ssl import SSLError
 
 from email.policy import default
 from email.parser import BytesParser
-from email.utils import parseaddr
 from imaplib import IMAP4_SSL
 #from imaplib.IMAP4 import error as imapError #任何错误都将引发该异常。
 
 
 class ImapHelper(object):
 
-    def __init__(self, *config:str) -> None:
+    def __init__(self, mail:dict):
         '''
         登录imap收件服务器，将句柄赋值给实例变量self.imap
         设置实例变量存储由with语句（在__exit__中传递过来）返回的执行信息
+
+        :param:
+            mail:dict:imap服务器的地址和端口及用户名、密码，字典定义如下：
+                { imaphost:服务器, imapport:端口号, 
+                  account:账号, password:密码  }
         '''
 
-        self.config = config
-        _dict = ConfigReader(*self.config).getdict('mail')
-
-        self.imap = IMAP4_SSL(_dict['imaphost'], _dict['imapport'])
-        self.imap.login(_dict['username'], _dict['password'])
+        self.imap = IMAP4_SSL(mail['imaphost'], mail['imapport'])
+        self.imap.login(mail['account'], mail['password'])
         _tag = self.imap._new_tag() 
         self.imap.send(_tag + b' ID ("name" "zbot" "version" "1.0" "vendor" "J.D.zhu")\r\n')
         ''' 
@@ -71,9 +70,9 @@ class ImapHelper(object):
             parts:str, 给IMAP4.fetch()默认为读取邮件头部信息'BODY[HEADER]'
                     BODY[]相当于RFC822，返回的是全部邮件内容
             criterion:str,给IMAP4.search()的参数. 默认为未读邮件'(UNSEEN)'
-            last:读取最后（最新）收到的几个邮件。如果缺省或者大于邮件数量，则读取全部邮件
+            last:int,读取最后（最新）收到的几个邮件。如果缺省或者大于邮件数量，则读取全部邮件
         :return:
-            bmails: 邮件内容的列表,内容是未经解析的字节串。 []空表示没有相关邮件
+            bmails:list,邮件内容的列表,内容是未经解析的字节串。 []空表示没有相关邮件
         '''   
 
         #选择邮箱,默认参数是INBOX,返回: ( 状态，[b'邮件数量'] ) 
@@ -102,14 +101,7 @@ class ImapHelper(object):
             EmailMessage消息对像
         '''
         return BytesParser(policy=default).parsebytes(bmail, headersonly=True)
-
     
-    def trans_addr(self, _from:str) -> tuple:
-        '''
-        将邮件中from发件人信息字符串转换为 ('username', 'useraddr@abc.com') 的元组
-        '''
-        return parseaddr(_from)
-
 
 
 from email.message import EmailMessage
@@ -120,19 +112,25 @@ from smtplib import SMTP_SSL
 
 class SmtpHelper(object):
 
-    def __init__(self, *config) -> None:
+    def __init__(self, mail:dict):
         '''
         登录SMTP服务器，将句柄赋值给实例变量self.smtp
         设置实例变量存储由with语句（在__exit__中传递过来）返回的执行信息
+
+        :param:
+            mail:dict:smtp服务器的地址和端口及用户名、密码，字典定义如下：
+                { smtphost:服务器, smtpport:端口号, 
+                  account:账号, password:密码  }
         '''
 
-        self.config = config
-        _dict = ConfigReader(*self.config).getdict('mail')
+        self.smtp = SMTP_SSL(mail['smtphost'], mail['smtpport'])
+        self.smtp.login(mail['account'], mail['password'])
+        
+        #设置发件人显示名称和账号，在调用send_mail()前，改变self.display_name
+        #的值，可以改变发件人显示名称
+        self.display_name = mail['display_name']
+        self.from_addr = mail['account']
 
-        self.smtp = SMTP_SSL(_dict['smtphost'], _dict['smtpport'])
-        self.smtp.login(_dict['username'], _dict['password'])
-
-        self.username = _dict['username']
         self.exc_type = None
         self.exc_value = None
         self.exc_tb = None
@@ -158,21 +156,26 @@ class SmtpHelper(object):
         return None
 
 
-    def send_mail(self, to_addr:str or list, message:str, title:str) -> str:
+    def send_mail(self, receiver:dict, title:str, content:str) -> None:
         ''' 
         发送信息给收件人
-        :param:
-            to_addr:收件人地址。一个地址的字符串，或者是地址列表。
-            message:邮件内容，字符串。
-            title：邮件标题
-        :return:
+        *调用此方法前改变self.display_name的值，可以改变发件人的显示名称
 
-        '''   
+        :param:
+            receiver：dict,键为名字，值为地址。
+            title：邮件标题
+            content:邮件内容，字符串。
+            
+        :return:
+        '''
+
         msg = EmailMessage()
+        _to = []
+        for key, value in receiver.items():
+            _to.append(Address(display_name=key, addr_spec=value))
+        msg['To'] = _to
+        msg['From'] = Address(self.display_name, addr_spec=self.from_addr)
         msg['Subject'] = title 
-        msg['From'] = Address(self.username, addr_spec = self.username) 
-        msg['To'] = to_addr 
-        msg.set_content(message)
-        self.smtp.sendmail(self.username, to_addr, msg.as_string())
-        
+        msg.set_content(content)
+        self.smtp.send_message(msg)
         return None
