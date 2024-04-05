@@ -13,7 +13,6 @@ from configparser import ConfigParser
 class ConfigReader(ConfigParser):
     ''' 
     读取配置文件,并转换数据格式 
-    
     '''
 
     #默认是__main__所在目录下的config.ini
@@ -36,7 +35,7 @@ class ConfigReader(ConfigParser):
         if not config:
             config = (ConfigReader._CONFIG,)
         
-        self.read(ospath.join(syspath[0], *config), encoding='utf_8')
+        self.read(ospath.join(syspath[0], *config), encoding='utf-8')
         return None
 
 
