@@ -92,7 +92,7 @@ class ImapHelper(object):
         return bmails            
 
 
-    def trans_header(self, bmail):
+    def parse_header(self, bmail):
         '''
         转换头部信息
         :param:
