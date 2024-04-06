@@ -17,19 +17,19 @@ from imaplib import IMAP4_SSL
 
 class ImapHelper(object):
 
-    def __init__(self, mail:dict):
+    def __init__(self, config:dict):
         '''
         登录imap收件服务器，将句柄赋值给实例变量self.imap
         设置实例变量存储由with语句（在__exit__中传递过来）返回的执行信息
 
         :param:
-            mail:dict:imap服务器的地址和端口及用户名、密码，字典定义如下：
+            config:dict:imap服务器的地址和端口及用户名、密码，字典定义如下：
                 { imaphost:服务器, imapport:端口号, 
                   account:账号, password:密码  }
         '''
 
-        self.imap = IMAP4_SSL(mail['imaphost'], mail['imapport'])
-        self.imap.login(mail['account'], mail['password'])
+        self.imap = IMAP4_SSL(config['imaphost'], config['imapport'])
+        self.imap.login(config['account'], config['password'])
         _tag = self.imap._new_tag() 
         self.imap.send(_tag + b' ID ("name" "zbot" "version" "1.0" "vendor" "J.D.zhu")\r\n')
         ''' 
@@ -112,24 +112,24 @@ from smtplib import SMTP_SSL
 
 class SmtpHelper(object):
 
-    def __init__(self, mail:dict):
+    def __init__(self, config:dict):
         '''
         登录SMTP服务器，将句柄赋值给实例变量self.smtp
         设置实例变量存储由with语句（在__exit__中传递过来）返回的执行信息
 
         :param:
-            mail:dict:smtp服务器的地址和端口及用户名、密码，字典定义如下：
+            config:dict:smtp服务器的地址和端口及用户名、密码，字典定义如下：
                 { smtphost:服务器, smtpport:端口号, 
                   account:账号, password:密码  }
         '''
 
-        self.smtp = SMTP_SSL(mail['smtphost'], mail['smtpport'])
-        self.smtp.login(mail['account'], mail['password'])
+        self.smtp = SMTP_SSL(config['smtphost'], config['smtpport'])
+        self.smtp.login(config['account'], config['password'])
         
         #设置发件人显示名称和账号，在调用send_mail()前，改变self.display_name
         #的值，可以改变发件人显示名称
-        self.display_name = mail['display_name']
-        self.from_addr = mail['account']
+        self.display_name = config['display_name']
+        self.from_addr = config['account']
 
         self.exc_type = None
         self.exc_value = None

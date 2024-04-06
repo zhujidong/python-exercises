@@ -19,7 +19,7 @@ if __name__ == '__main__':
             wht = imap.get_mails('BODY[HEADER]', F'(SINCE "{today}")', 1)
     
         for w in wht:
-            t = imap.trans_header(w)
+            t = imap.parse_header(w)
             print(t['Subject'])
             print(t['From'].addresses[0].addr_spec)
             
@@ -34,4 +34,4 @@ if __name__ == '__main__':
             )
 
     imap_test()
-    #smtp_test()
+    smtp_test()
