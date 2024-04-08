@@ -2,25 +2,39 @@
 
 
 [executor]
-master = 888888@qq.com
+#executor模块所用的字典
+
+#此文件是用来记录创建时间,会被修改更新,但不会存入数据
+tempfile = 'Temp.for.times.kdsgkhja.tmp'
 
 
-[executor_cmdlist]
+[executor.master]
+#能够发布命令的邮箱，只有这些发送的才被接受
+
+'李四' = '4234251627@qq.com'
+'王五' = 'ong@live.com'
+
+
+[executor.cmdlist]
 #只有在列表中的命令才会执行。
-#一次执行多个命令，可以用#号分隔
 
-frpc2start = systemctl start frpc.service
-frpc2restart = systemctl restart frpc.service
-frpc2status = systemctl status frpc.service
-frpc2stop = systemctl stop frpc.service
+frpstart = 'systemctl start frpc.service'
+frprestart = 'systemctl restart frpc.service'
+frpstatus = 'systemctl status frpc.service'
+frpstop = 'systemctl stop frpc.service'
 
-[mail]
-#邮件设置
 
-username = 54654563@163.com
-password = JFSDAFSDGLKLJSDF
+[executor.mailhelper]
+#executor模块中调用的mailhelper模块所用的字典
+#也可以将其它mailhelper配置,以'mailhelper'为键名添加到executor字典中,再传给executor模块中的类
 
-smtphost = smtp.163.com
+account = 'mailusername@163.com'
+display_name = '张三' #此账号发件时显示的名字
+password = 'ASSPYNRYHGFMPBIM'
+
+smtphost = 'smtp.163.com'
 smtpport = 465
-imaphost = imap.163.com
+
+imaphost = 'imap.163.com'
 imapport = 993
+#-----------------------------

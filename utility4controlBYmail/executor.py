@@ -14,7 +14,7 @@ from sys import path as syspath
 import subprocess as subp
 # subp.SubprocessError  #subprocess 所有异常类的基类
 
-# ***utility4mail在此模块下级，或在 sys.path 中才能查找到
+# ***utility4mail需在 sys.path 中才能查找到
 from utility4mail.mailhelper import ImapHelper, SmtpHelper
 
 
@@ -31,7 +31,7 @@ class Executor(object):
             tempfile：值为一个临时文件名，只是用文件的时间记录上次处理邮件的时间
             master：dict，可以用来发送命令的邮箱
             cmdlist：dict,只有字典中的命令才能被执行
-            mail：dict,供邮件服务使用
+            mailhelper：dict,供邮件服务使用
         '''
 
         self.config = config
@@ -45,7 +45,7 @@ class Executor(object):
         执行命令(必须是命令列表之中的)
         
         :param:
-            cmds:列表，元素需是命令列表中定义好的。缺省调用self._get_orders()从邮件中读取
+            cmds:列表，需是命令列表中定义好的。缺省调用self._get_orders()从邮件中读取
 
         :return:
             rcode:int，命令退出状态码，0正常，-N 被信息N中断
@@ -60,8 +60,8 @@ class Executor(object):
             #此命令在列表之中
             if cmd in self.config['cmdlist'].keys():
                 cmd = self.config['cmdlist'][cmd]
-                cmd_l = cmd.split()  #shlex.split() 复杂的也许需要此方法序列化
-                rs = subp.run(cmd_l, stdout=subp.PIPE, stderr=subp.STDOUT, encoding='UTF-8')
+                split_cmd = cmd.split()  #shlex.split() 复杂的也许需要此方法序列化
+                rs = subp.run(split_cmd, stdout=subp.PIPE, stderr=subp.STDOUT, encoding='UTF-8')
                 if rs.returncode!=0:
                     rcode = rs.returncode
                 rmsg += 'args: ' + ' '.join(rs.args) + '\n'
@@ -74,8 +74,9 @@ class Executor(object):
         if not rmsg:
             rmsg ='当前没有需要执行的命令'
         else:
-            with SmtpHelper(*self.config) as smtp: 
-                smtp.send_mail( self.master, rmsg, '#'.join(cmds)+'执行结果')
+            with SmtpHelper(self.config['mailhelper']) as smtp: 
+                #将执行结果发送给所有的管理员
+                smtp.send_mail( self.config['master'], '#'.join(cmds)+'执行结果', rmsg )
  
         return rcode, rmsg
 
@@ -92,16 +93,16 @@ class Executor(object):
         now = time.time()
 
         #读取今天最新的五封邮件头部
-        with ImapHelper(*self.config) as imap:
+        with ImapHelper(self.config['mailhelper']) as imap:
             today = time.strftime('%d-%b-%Y')
             #today = "15-Mar-2024"
             bheads = imap.get_mails('BODY[HEADER]', F'(SINCE "{today}")', 5)
         
-        #读读临时文件时间，此文件创建之后的邮件才是没被执行的新邮件
+        #读读临时文件时间，此文件创建之后的邮件才是没处理的新邮件
         try:
-            last_runtime = ospath.getmtime(self.tmpfile)
+            last_time = ospath.getmtime(self.tempfile)
         except:
-            last_runtime = 0
+            last_time = 0
 
         #找到最新的，管理员发送的，半小时内的，大于最后执行时间的（即没有执行过此命令）
         for bhd in bheads:
@@ -109,15 +110,16 @@ class Executor(object):
             s = hd.get('Subject')
             f = hd.get('From').addresses[0].addr_spec #只要邮件地址
             t = hd.get('Date')
+            #不同的邮件服务器会引起时区问题。。。。。
             _struct = time.strptime(t, "%a, %d %b %Y %H:%M:%S +0800")
             t =time.mktime(_struct) #转为时间戳
             
             # 是管理员发送的； 距今半小时内的；大于上次读取的邮件时间； 
-            if f==self.master and (now-t)<1800 and t>last_runtime:
-                #创建此文件只为记录创建它时的的这个时间，此时间前的最新邮件将被执行
-                with open(self.tmpfile, 'w') as f:
+            if f in self.config['master'].values() and (now-t)<1800 and t>last_runtime:
+                #创建此文件只为记录创建它时的的这个时间，大于此时间才是未处理的新邮件
+                with open(self.tempfile, 'w') as f:
                     pass
-                #将多个命令拆分为列表，传给执行函数
+                #去除空格、转为小写，将多个命令拆分为列表
                 orders = s.replace(' ','').lower().split("#")
-                break
+                break #只要最新的一个邮件
         return  orders
