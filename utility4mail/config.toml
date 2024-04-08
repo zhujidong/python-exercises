@@ -1,8 +1,8 @@
 # -*- coding:utf_8 -*-
 
 
-[mail]
-#mailhelper模块所用字典的键名
+[mailhelper]
+#mailhelper模块所用字典
 
 account = 'mailusername@163.com'
 display_name = '张三' #此账号发件时显示的名字

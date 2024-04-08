@@ -10,10 +10,10 @@ if __name__ == '__main__':
     syspath.append(ospath.dirname(ospath.dirname(__file__)))
     from utility4configreader.tomlreader import TOMLReader
 
-    _data= TOMLReader()
-    
+    config= TOMLReader()
+
     def imap_test():
-        with ImapHelper(_data['mail']) as imap:
+        with ImapHelper(config['mailhelper']) as imap:
             #today = time.strftime('%d-%b-%Y')
             today = "03-Apr-2024"
             wht = imap.get_mails('BODY[HEADER]', F'(SINCE "{today}")', 1)
@@ -26,9 +26,9 @@ if __name__ == '__main__':
 
 
     def smtp_test():
-        with SmtpHelper(_data['mail']) as smtp:
+        with SmtpHelper(config['mailhelper']) as smtp:
             smtp.send_mail( 
-                _data['receiver'], 
+                config['receiver'], 
                 '多收件人',
                 '这是使用\nsend_message发送'
             )
