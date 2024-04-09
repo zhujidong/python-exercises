@@ -69,7 +69,7 @@ class Executor(object):
                 rmsg += 'stdout: ' + rs.stdout +'\n\n'
             else:
                 rmsg += F'{cmd}命令不存在\n'
-            time.sleep(7)
+            time.sleep(5)
 
         if not rmsg:
             rmsg ='当前没有需要执行的命令'
@@ -90,36 +90,41 @@ class Executor(object):
         '''
        
         orders = []
-        now = time.time()
-
-        #读取今天最新的五封邮件头部
-        with ImapHelper(self.config['mailhelper']) as imap:
-            today = time.strftime('%d-%b-%Y')
-            #today = "15-Mar-2024"
-            bheads = imap.get_mails('BODY[HEADER]', F'(SINCE "{today}")', 5)
-        
-        #读读临时文件时间，此文件创建之后的邮件才是没处理的新邮件
+        now_stamp = time.time() #当前时间戳
+        local_struct = time.localtime(now_stamp)
+        ''' 当前时间结构，虽然time的altzone、daylight、tzname、timezone常量在加载时确定，
+            但tzset()等作用，可以会不正常，建议用localtime()的tm_zone和tm_gmtoff属性
+        '''
         try:
+            #时间文件的时间戳，应该是个本地化时间吧
             last_time = ospath.getmtime(self.tempfile)
         except:
             last_time = 0
 
+        #读取今天最新的五封邮件头部
+        with ImapHelper(self.config['mailhelper']) as imap:
+            today = time.strftime('%d-%b-%Y', local_struct)
+            #today = "15-Mar-2024"
+            bheads = imap.get_mails('BODY[HEADER]', F'(SINCE "{today}")', 5)
+                
         #找到最新的，管理员发送的，半小时内的，大于最后执行时间的（即没有执行过此命令）
         for bhd in bheads:
             hd = imap.parse_header(bhd) #解析邮件头
             s = hd.get('Subject')
             f = hd.get('From').addresses[0].addr_spec #只要邮件地址
             t = hd.get('Date')
-            #不同的邮件服务器会引起时区问题。。。。。
-            _struct = time.strptime(t, "%a, %d %b %Y %H:%M:%S +0800")
-            t =time.mktime(_struct) #转为时间戳
+
+            hd_struct = time.strptime(t, "%a, %d %b %Y %H:%M:%S %z")
+            t_stamp = time.mktime(hd_struct) #转为时间戳
+            #当前时区比邮件时区多了多少秒，给其加上，转为当前时区时间戳
+            t_stamp += (local_struct.tm_gmtoff - hd_struct.tm_gmtoff)
             
             # 是管理员发送的； 距今半小时内的；大于上次读取的邮件时间； 
-            if f in self.config['master'].values() and (now-t)<1800 and t>last_runtime:
-                #创建此文件只为记录创建它时的的这个时间，大于此时间才是未处理的新邮件
+            if f in self.config['master'].values() and (now_stamp-t_stamp)<1800 and t_stamp>last_time:
                 with open(self.tempfile, 'w') as f:
+                    #创建或重写文件，只为用文件时间记录邮件被处理的时间。
                     pass
-                #去除空格、转为小写，将多个命令拆分为列表
+            
                 orders = s.replace(' ','').lower().split("#")
                 break #只要最新的一个邮件
         return  orders

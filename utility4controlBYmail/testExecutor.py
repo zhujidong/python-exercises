@@ -13,9 +13,9 @@ if __name__ == '__main__':
     config = TOMLReader()
 
     ex = Executor(config['executor'])
-    _, rs = ex.exec_cmd()
-    print(rs)
-
+    #_, rs = ex.exec_cmd()
+    #print(rs)
+    print(ex._get_orders())
 
 
 
