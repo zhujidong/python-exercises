@@ -2,7 +2,7 @@
 
 '''
 The MIT License (MIT) 
-zhujidong 2021 Copyright(c), WITHOUT WARRANTY OF ANY KIND.
+zhujidong 2024 Copyright(c), WITHOUT WARRANTY OF ANY KIND.
 
 '''
 
@@ -81,7 +81,7 @@ class Executor(object):
         return rcode, rmsg
 
 
-    def _get_orders(self) -> dict:
+    def _get_orders(self) -> list:
         '''
         读取最新的5封邮件的头信息，将符合条件的命令邮件标题，拆分成命令列表
 
@@ -114,17 +114,19 @@ class Executor(object):
             f = hd.get('From').addresses[0].addr_spec #只要邮件地址
             t = hd.get('Date')
 
+            #将邮件日期时间字符串，转为时间戳
             hd_struct = time.strptime(t, "%a, %d %b %Y %H:%M:%S %z")
-            t_stamp = time.mktime(hd_struct) #转为时间戳
-            #当前时区比邮件时区多了多少秒，给其加上，转为当前时区时间戳
-            t_stamp += (local_struct.tm_gmtoff - hd_struct.tm_gmtoff)
+            t_stamp = time.mktime(hd_struct)
+            #当前时区比邮件时区多了多少？给其加上，转为当前时区时间戳
+            t_stamp += (local_struct.tm_gmtoff-hd_struct.tm_gmtoff)
             
             # 是管理员发送的； 距今半小时内的；大于上次读取的邮件时间； 
-            if f in self.config['master'].values() and (now_stamp-t_stamp)<1800 and t_stamp>last_time:
+            if f in self.config['master'].values() \
+            and (now_stamp-t_stamp)<1800 and t_stamp>last_time:
                 with open(self.tempfile, 'w') as f:
                     #创建或重写文件，只为用文件时间记录邮件被处理的时间。
                     pass
             
-                orders = s.replace(' ','').lower().split("#")
+                orders = s.replace(' ','').lower().split("=")
                 break #只要最新的一个邮件
         return  orders
