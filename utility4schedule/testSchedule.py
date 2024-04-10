@@ -10,17 +10,29 @@ def read_config():
     计划任务的所需的配置文件格式
     '''
     cfg = ConfigReader() #为空默认是程序启动目录下config.ini
-    my_schedule = cfg.getschedule("scheduleA")
-    print("从配置文件读出的计划格式是:\r\n", my_schedule)
+    ini = cfg.getdict("scheduleA")
+    print("从ini配置文件读出的计划格式是:\r\n", ini)
 
-    return my_schedule
+    tom = TOMLReader()['scheduleA']
+    print("从tom配置文件读出的计划格式是:\r\n", tom)
+    return ini,tom
 
+
+def trans():
+    ini, tom = read_config()
+    tini = Schedule._trans_schedule(ini)
+    ttom = Schedule._trans_schedule(tom)
+
+    print("ini:\n",tini)
+    print("tom:\n",ttom)
+    return tini, ttom
 
 def sche_time():
     '''
     测试生成计划下次运行时间
     '''
-    interval, nextdatetime =  Schedule._get_interval(read_config())
+    tini, ttom = trans()
+    interval, nextdatetime =  Schedule._get_interval(tini)
     print("\r\n测试调用方法生成下次计划运行时间：")
     print("下次计划间隔：", interval)
     print("下次计划时间：", time.strftime("%m月%d日%H:%M", nextdatetime))
@@ -54,9 +66,10 @@ def task2(arg):
     return rs, err
 
 def sche():
+    ini, tom = read_config()
     sche = Schedule()
-    sche.reg_thread('taskone', task1, ('OK',), ([(2, ['30', '01:00', '22:00']),]), (1,10),run_now=False)
-    sche.reg_thread('二', task2, ('二',), ([(2, ['50','01:00','21:00']),]), (0,),True)
+    sche.reg_thread('taskone', task1, ('OK',), ini)
+    sche.reg_thread('二', task2, ('二',), tom)
 
     while True:
         str = input()
@@ -92,9 +105,13 @@ if __name__ == '__main__':
     #将最先调用python解释器的脚本,即启动程序所在目录的上级目录,加入到系统查找路径
     syspath.append(ospath.dirname(ospath.dirname(__file__)))
     from utility4configreader.configreader import ConfigReader
-
+    from utility4configreader.tomlreader import TOMLReader
 
     #read_config()
+    
+    #trans()
+
     #sche_time()
+    
     sche()
     

@@ -33,8 +33,7 @@ class Schedule(object):
 
         '''
 
-    def reg_thread( self, name:str, fun:object, param:tuple, 
-                    schedule:list[tuple], retry:tuple=(1,360),run_now:bool=False) -> None:
+    def reg_thread( self, name:str, fun:object, param:tuple, schedule:dict) -> None:
         '''
         将一个方法函数，注册为一个计划任务
 
@@ -46,25 +45,25 @@ class Schedule(object):
                 *本方法中只能传给任务函数位置参数
             param:tuple,任务线程的参数，**只能传递位置参数给fun **
 
-            schedule:list[tuple],任务执行的计划，定义方式见config.ini
-                读出后传入的格如下，可由ConfigReader.getschedule()方法得到：
-                [   (1, ['600', '06:00', '22:00']), 
+            schedule:dict,任务执行的计划，定义方式见config.ini和config.toml
+                sche:[
+                    (1, ['600', '06:00', '22:00']), 
                     (3, ['09:00', '14:00', '17:00']), 
-                    (7, ['08:30', '10:30', '13:30', '15:30', '17:30', '20:00']) ]
-            
-            retry:tuple(int,int)，线程执行失败时，重试次数与时间间隔（默认重试1次，隔360秒后重试）
-            run_now:bool,计划划任务注册后是否立即执行一次，否则按计划执行
+                    (7, ['08:30', '10:30', '13:30', '15:30', '17:30', '20:00']) ],
+                retry:[1,300], #线程执行失败时，重试次数与时间间隔（默认重试1次，隔300秒后重试）
+                run_now:bool 计划划任务注册后是否立即执行一次，否则按计划执行
 
         '''
-        self.threads[name] = {  'fun':fun, 'param':param, 'schedule':schedule, 'retry':retry, 
-                                'errors':0, 'handle':None, 'statu':1}
+        schedule = self._trans_schedule(schedule)
+        self.threads[name] = {  'fun':fun, 'param':param, 'schedule':schedule,
+                                'errors':0, 'handle':None, 'statu':1    }
         '''
         serf.threads以计划名字name为key, value仍是字典，其它key含义如下
         errors:int,记录线程执行失败次数
         handle:线程的句柄，取消、重启，立即执行任务等使用
         statu:int, 计划任务的状态，是否按计划执行1,正常, 0 暂停 
         '''
-        self._run_thread(name, run_now)
+        self._run_thread(name, schedule['run'])
         return None
 
 
@@ -97,11 +96,11 @@ class Schedule(object):
                 self.threads[name]['errors'] = 0
                 info = F'“{name}”任务执行完毕:{stdout}，\n下次计划于{nextdatetime}启动'
             #任务执行中失败,且要求重试
-            elif self.threads[name]['retry'][0]>0:
+            elif self.threads[name]['schedule']['retry'][0]>0:
                 self.threads[name]['errors'] += 1
                 #没达到重试次数，调整下次执行的间隔为重试间隔
-                if self.threads[name]['errors']  <= self.threads[name]['retry'][0]:
-                    interval = self.threads[name]['retry'][1]
+                if self.threads[name]['errors']  <= self.threads[name]['schedule']['retry'][0]:
+                    interval = self.threads[name]['schedule']['retry'][1]
                     info = F'”{name}“执行失败：{stdout}\n 任务将在{interval/60}分种后重启...'
                 else:
                     info = F'”{name}“任务已失败{self.threads[name]["errors"]}次，不再重试，将在下次计划时间（{nextdatetime}）启动。'
@@ -180,16 +179,18 @@ class Schedule(object):
 
 
     @staticmethod
-    def _get_interval(schedule:list[tuple]) -> tuple:
+    def _get_interval(schedule:dict) -> tuple:
         '''
         根据计划schedule（元组列表），计算现在到下次计划间隔的秒数。
         
         :param:
-            schedule：执行任务的计划表，定义方法见 config.ini
-        :return: 
+            schedule：执行任务的计划表，定义方法见reg_thread（）
+            
+        :return:            
             至下次计划的间隔秒数, 下次计划的日期时间
-        
         '''
+
+        schedule = schedule['sche']
 
         #获取当前时间戳，星期几，日期，时间
         stamp = time.time()
@@ -251,3 +252,46 @@ class Schedule(object):
 
         interval = next_stamp - stamp
         return interval, time.localtime(next_stamp)
+
+
+    @staticmethod
+    def _trans_schedule(config:dict) -> dict:
+        '''
+        配置文件读出的字典，整理出使用的格式，见reg_thread（）
+
+        :param:
+            config:dict,计划配置的字典，可以从配置文件中读取
+        
+        :return:dict，三个键：计划时间，重试规则，是否立即运行
+            sche: #计划时间
+                [(1, ['600', '06:00', '22:00']), 
+                 (3, ['09:00', '14:00', '17:00']), 
+                 (7, ['08:30', '10:30', '13:30', '15:30', '17:30', '20:00']) ],
+            retry:[1,300], #线程执行失败时，重试次数与时间间隔（默认重试1次，隔300秒后重试）
+            run_now:bool 计划划任务注册后是否立即执行一次，否则按计划执行
+        '''
+
+        new_sche = {} #计划任务
+        new_retry = [1, 300] #重试规则[次数，间隔秒数]
+        new_run = False
+        week = ['1','2','3','4','5','6','7']
+
+        for key, value in config.items():
+            if type(value)==bool:
+                new_run = value
+            else:
+                split_value = value.replace(' ','').split(",")
+
+            split_key = key.replace(' ','').split(",")
+            for skey in split_key:
+                if skey in week:
+                    new_sche[int(skey)] = split_value
+                elif skey=="retry" and split_value!=['']:
+                    new_retry = [int(split_value[0]), int(split_value[1])]
+                elif skey=='run' and split_value[0].lower()=='true':
+                    new_run = True
+
+        new_sche = sorted(new_sche.items(), key=lambda x:x[0])
+        schedule = {'sche':new_sche, 'retry':new_retry, 'run': new_run}
+
+        return schedule
