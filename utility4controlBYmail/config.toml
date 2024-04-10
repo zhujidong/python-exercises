@@ -5,7 +5,7 @@
 #executor模块所用的字典
 
 #此文件是用来记录创建时间,会被修改更新,但不会存入数据
-tempfile = 'Temp.for.times.kdsgkhja.tmp'
+tempfile = 'Temp.last.runtime.AsTfvZkYxbQlusH.tmp'
 
 
 [executor.master]
@@ -17,19 +17,24 @@ tempfile = 'Temp.for.times.kdsgkhja.tmp'
 
 [executor.cmdlist]
 #只有在列表中的命令才会执行。
+#（只会执行最新的邮件）多条命令在一个邮件主题中用用“=”分开即可
 
-frpstart = 'systemctl start frpc.service'
-frprestart = 'systemctl restart frpc.service'
-frpstatus = 'systemctl status frpc.service'
-frpstop = 'systemctl stop frpc.service'
+'frp-stop' = 'systemctl stop frpc.service'
+'frp-start' = 'systemctl start frpc.service'
+'frp-status' = 'systemctl status frpc.service'
+
+'rdp-stop' = 'systemctl stop xrdp.service'
+'rdp-start' = 'systemctl start xrdp.service'
+'rdp-status' = 'systemctl status xrdp.service'
 
 
 [executor.mailhelper]
 #executor模块中调用的mailhelper模块所用的字典
 #也可以将其它mailhelper配置,以'mailhelper'为键名添加到executor字典中,再传给executor模块中的类
 
-account = 'mailusername@163.com'
 display_name = '张三' #此账号发件时显示的名字
+
+account = 'mailusername@163.com'
 password = 'ASSPYNRYHGFMPBIM'
 
 smtphost = 'smtp.163.com'

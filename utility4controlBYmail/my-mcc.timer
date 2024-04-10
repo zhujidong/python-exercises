@@ -1,0 +1,16 @@
+[Unit]
+Description=Daily MCC(mail control compter) activities
+
+[Timer]
+Unit=my-mcc.service
+
+#开机启动后99秒触发一次
+#OnBootSec=99sec 
+
+#任意年月日，8至21时的每小时，分钟从0分开始每步进10解发一次
+OnCalendar=*-*-* 08..21:00/10
+#and 22:00, 22:15, 22:30, 22:55
+OnCalendar=*-*-* 22:00,15,30,55
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,8 @@
+
+[Unit]
+Description=my-mcc, Mail control compouter
+
+[Service]
+ExecStart=/bin/python3 /home/zhujidong/myProgram/mcc/mcc.py
+
+#不自动运行，由my-mcc.timer计划启动
