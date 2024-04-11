@@ -54,14 +54,14 @@ class Schedule(object):
                 run_now:bool 计划划任务注册后是否立即执行一次，否则按计划执行
 
         '''
-        schedule = self._trans_schedule(schedule)
+        schedule = Schedule._trans_schedule(schedule)
         self.threads[name] = {  'fun':fun, 'param':param, 'schedule':schedule,
-                                'errors':0, 'handle':None, 'statu':1    }
+                                'errors':0, 'handle':None, 'status':1    }
         '''
-        serf.threads以计划名字name为key, value仍是字典，其它key含义如下
-        errors:int,记录线程执行失败次数
-        handle:线程的句柄，取消、重启，立即执行任务等使用
-        statu:int, 计划任务的状态，是否按计划执行1,正常, 0 暂停 
+        self.threads以计划名字name为key, value仍是字典，其余key含义如下
+            errors:int,记录线程执行失败次数
+            handle:线程的句柄，取消、重启，立即执行任务等使用
+            status:int, 计划任务的状态，是否按计划执行1,正常, 0 暂停 
         '''
         self._run_thread(name, schedule['run'])
         return None
@@ -131,7 +131,7 @@ class Schedule(object):
         info = 0
         if name in self.threads.keys():
             self.threads[name]['handle'].cancel()
-            self.threads[name]['statu'] = 0
+            self.threads[name]['status'] = 0
             info = F'"{name}"任务已暂停。'
         else:
             info = F'"{name}"任务不存在。'
@@ -140,8 +140,8 @@ class Schedule(object):
     def restart_thread(self, name) -> None:
         ''' 重启某个计划的任务 '''
         info = 0
-        if name in self.threads.keys() and self.threads[name]['statu']==0:
-            self.threads[name]['statu'] = 1
+        if name in self.threads.keys() and self.threads[name]['status']==0:
+            self.threads[name]['status'] = 1
             self._run_thread(name, run_now=False)
             info = F'"{name}"任务重启完成。'
         else:
@@ -155,7 +155,7 @@ class Schedule(object):
         if name in self.threads.keys():
             #不取消就会多一个线程,且handle被这次新的覆盖而失去控制
             self.threads[name]['handle'].cancel()
-            self.threads[name]['statu'] = 1 #如果的暂停的任务,会变为正常
+            self.threads[name]['status'] = 1 #如果的暂停的任务,会变为正常
             self._run_thread(name, run_now=True)
             info = F'"{name}"立即运行任务完成。'
         else:
@@ -166,7 +166,7 @@ class Schedule(object):
     def list_threads(self) -> None:
         ''' 列出运行的计划任务信息 '''
         for key, value in self.threads.items():
-            print(key,'状态:', '正常' if value['statu']==1 else "暂停")
+            print(key,'状态:', '正常' if value['status']==1 else "暂停")
             print(value['schedule'])
 
 

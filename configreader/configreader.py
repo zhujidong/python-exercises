@@ -12,7 +12,7 @@ from configparser import ConfigParser
 
 class ConfigReader(ConfigParser):
     ''' 
-    读取配置文件,并转换数据格式 
+    读取ini配置文件,并转换数据格式 
     '''
 
     #默认是__main__所在目录下的config.ini
