@@ -54,7 +54,7 @@ class Schedule(object):
                 run_now:bool 计划划任务注册后是否立即执行一次，否则按计划执行
 
         '''
-        schedule = self._trans_schedule(schedule)
+        schedule = Schedule._trans_schedule(schedule)
         self.threads[name] = {  'fun':fun, 'param':param, 'schedule':schedule,
                                 'errors':0, 'handle':None, 'statu':1    }
         '''

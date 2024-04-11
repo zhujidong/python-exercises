@@ -104,8 +104,8 @@ if __name__ == '__main__':
     from sys import path as syspath
     #将最先调用python解释器的脚本,即启动程序所在目录的上级目录,加入到系统查找路径
     syspath.append(ospath.dirname(ospath.dirname(__file__)))
-    from utility4configreader.configreader import ConfigReader
-    from utility4configreader.tomlreader import TOMLReader
+    from configreader.configreader import ConfigReader
+    from configreader.tomlreader import TOMLReader
 
     #read_config()
     

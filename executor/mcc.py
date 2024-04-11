@@ -13,7 +13,7 @@ if __name__ == '__main__':
     #将当前目录的上级目录加入到sys.path
     syspath.insert(1, ospath.dirname(ospath.dirname(__file__)))
 
-    from utility4configreader.tomlreader import TOMLReader
+    from configreader.tomlreader import TOMLReader
     from executor import Executor
 
     _, info = Executor(TOMLReader()['executor']).exec_cmd()

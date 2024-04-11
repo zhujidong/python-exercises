@@ -15,7 +15,7 @@ import subprocess as subp
 # subp.SubprocessError  #subprocess 所有异常类的基类
 
 # ***utility4mail需在 sys.path 中才能查找到
-from utility4mail.mailhelper import ImapHelper, SmtpHelper
+from mailhelper.mailhelper import ImapHelper, SmtpHelper
 
 
 class Executor(object):
