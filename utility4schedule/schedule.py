@@ -271,27 +271,41 @@ class Schedule(object):
             run_now:bool 计划划任务注册后是否立即执行一次，否则按计划执行
         '''
 
-        new_sche = {} #计划任务
-        new_retry = [1, 300] #重试规则[次数，间隔秒数]
-        new_run = False
+        sche = {} #计划任务
+        retry = [1, 300] #重试规则[次数，间隔秒数]
+        run = False
         week = ['1','2','3','4','5','6','7']
 
         for key, value in config.items():
-            if type(value)==bool:
-                new_run = value
+            if key=='run':
+                #toml读的布尔型
+                if type(value)==bool: 
+                    run = value
+                #toml或ini读的字符型，只要不是大小写的true，就为假
+                elif type(value)==str and value.strip().lower()=='true':
+                    run = True
+            elif key=='retry':
+                #从toml读取的列表，并且有两个元素
+                if type(value)==list and len(value)==2: 
+                    retry = value
+                #如果是乱七八糟的字符串
+                elif type(value)==str:
+                    r = value.replace(' ','').split(",")
+                    if len(r)==2 and r[0].isdigit() and r[1].isdigit():
+                        retry = [int(r[0]), int(r[1])]
             else:
-                split_value = value.replace(' ','').split(",")
+                #去除空格，如果不是列表，转化为列表
+                if type(value)==list:
+                    value =[v.replace(' ', '') for v in value]
+                else:
+                    value = value.replace(' ','').split(",")
 
-            split_key = key.replace(' ','').split(",")
-            for skey in split_key:
-                if skey in week:
-                    new_sche[int(skey)] = split_value
-                elif skey=="retry" and split_value!=['']:
-                    new_retry = [int(split_value[0]), int(split_value[1])]
-                elif skey=='run' and split_value[0].lower()=='true':
-                    new_run = True
-
-        new_sche = sorted(new_sche.items(), key=lambda x:x[0])
-        schedule = {'sche':new_sche, 'retry':new_retry, 'run': new_run}
+                split_key = key.replace(' ','').split(",")
+                for skey in split_key:
+                    if skey in week:
+                        sche[int(skey)] = value
+        #排序，生成列表
+        sche = sorted(sche.items(), key=lambda x:x[0])
+        schedule = {'sche':sche, 'retry':retry, 'run': run}
 
         return schedule
