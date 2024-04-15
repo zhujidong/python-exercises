@@ -54,9 +54,9 @@ def task1(arg):
 
     return rs, err
 
-def task2(arg):
+def task2(arg='默认'):
     rs = random.randint(0, 1)
-    print("\r\n这是任务二，首次传入的参数:",arg)
+    print("\r\n这是任务二，参数默认:",arg)
     print("任务将返回：",rs)
     if rs==1:
         err = '任务二随机失败'
@@ -69,7 +69,7 @@ def sche():
     ini, tom = read_config()
     sche = Schedule()
     sche.reg_thread('taskone', task1, ('OK',), ini)
-    sche.reg_thread('二', task2, ('二',), tom)
+    sche.reg_thread('二', task2, (), tom)
 
     while True:
         str = input()
