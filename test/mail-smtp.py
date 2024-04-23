@@ -1,7 +1,6 @@
 # -*- coding: utf_8 -*-
 
 import smtplib
-
 from email.message import EmailMessage
 from email.headerregistry import Address
 
@@ -10,12 +9,13 @@ from email.headerregistry import Address
 msg = EmailMessage()  
   
 #头部信息：标题等都可以支持中文 
-msg['Subject'] = 'POP收件，解析内容，不含附件' 
+msg['Subject'] = '邮件主题' 
 
-#邮件地址：使用Address类 
+#发件地址：使用Address类 
 msg['From'] = Address( "张三丰", "test", "163.com" ) 
 
-#收件人是多人，可以传递一个元组#传递不同的参数方式来生成 
+#收件人是多人，可以传递一个元组
+#传递不同的参数方式来生成 
 toto =[ Address("后勤", addr_spec="9527@qq.com"), Address("自己", "test", "163.com") ]
 msg['To'] = toto 
  
@@ -38,8 +38,7 @@ htmls = "<html><head>HTML型邮件</head><body>\
 
 msg.add_alternative( htmls, subtype="html" ) 
 
-
-#读取附件内容和属性：支持中文
+#准备添加附件：读取附件内容和属性：支持中文
 with open('中文名.pdf','rb') as f:   
 	file_data = f.read()   
 	file_name = f.name 
@@ -51,13 +50,14 @@ msg.add_attachment(
 	subtype = 'octet-stream', 
 	filename = file_name
 ) 
+''' 
+add_attachment需在add_alternative后面，因为它们增加内容时，如果需要，
+会修改Content-Type类型。而add_alternative在后面却要修改主段的类型mixed为alternative是不对的。 
+''' 
 
 ss = smtplib.SMTP_SSL( 'smtp.163.com', '465' )
 ss.login( 'test@163.com', 'ppaasswwoorrdd' )
 
-#发送邮件（send_message会有些问题） 
-ss.sendmail( 
-	'test@163.com',
-	['9527@qq.com', 'test@163.com'],
-    msg.as_string()
-)
+#缺省时，会从msg读取发件人和收件人信息
+ss.send_message(msg)
+ss.quit()
