@@ -42,9 +42,9 @@ def sche_time():
 '''
 测试计划任任务执行
 '''
-def task1(arg):
+def task1(p):
     rs = random.randint(0, 1)
-    print("这是task1，首次传入的参数:",arg)
+    print("这是task1，传入的参数:", p)
     print("任务将返回：",rs)
     #根据返回值判断任务执行是否失败，决定是否重试
     if rs==1:
@@ -54,9 +54,9 @@ def task1(arg):
 
     return rs, err
 
-def task2(arg='默认'):
+def task2(kw1,kw2='默认'):
     rs = random.randint(0, 1)
-    print("\r\n这是任务二，参数默认:",arg)
+    print(F"\r\n这是任务二，参数kw1:{kw1}，kw2{kw2}")
     print("任务将返回：",rs)
     if rs==1:
         err = '任务二随机失败'
@@ -66,10 +66,12 @@ def task2(arg='默认'):
     return rs, err
 
 def sche():
-    ini, tom = read_config()
     sche = Schedule()
-    sche.reg_thread('taskone', task1, ('OK',), ini)
-    sche.reg_thread('二', task2, (), tom)
+    s1 = {'retry': [1, 10], 'run': True, '1,2,3,4,5,6,7': ['16:45', '16:47', '16:55']}
+    s2 = {'retry': [0, 10], 'run': False, '1,2,3,4,5,6,7': ['20', '16:40', '17:55']}
+
+    sche.reg_thread('taskone', task1, ('传入位置参数',),{}, s1)
+    sche.reg_thread('二', task2, ("这是kw1",), {'kw2':'传入关键字参数kw2'}, s2)
 
     while True:
         str = input()

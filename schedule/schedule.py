@@ -33,7 +33,7 @@ class Schedule(object):
 
         '''
 
-    def reg_thread( self, name:str, fun:object, param:tuple, schedule:dict) -> None:
+    def reg_thread( self, name:str, fun:object, args:tuple, kwds:dict, schedule:dict) -> None:
         '''
         将一个方法函数，注册为一个计划任务
 
@@ -43,7 +43,8 @@ class Schedule(object):
             fun:str,要注册成任务线程的函数方法。
                 *要求此方法返回一个元组，第一个元素为任务状态码，0,正常；第二个元素为任务相关信息（错误信息等）
                 *本方法中只能传给任务函数位置参数
-            param:tuple,任务线程的参数，**只能传递位置参数给fun **
+            args:tuple,任务线程的位置参数
+            kwds:dict,任务线程的关键字参数
 
             schedule:dict,任务执行的计划，定义方式见config.ini和config.toml
                 sche:[
@@ -55,7 +56,7 @@ class Schedule(object):
 
         '''
         schedule = Schedule._trans_schedule(schedule)
-        self.threads[name] = {  'fun':fun, 'param':param, 'schedule':schedule,
+        self.threads[name] = {  'fun':fun, 'args':args, 'kwds':kwds, 'schedule':schedule,
                                 'errors':0, 'handle':None, 'status':1    }
         '''
         self.threads以计划名字name为key, value仍是字典，其余key含义如下
@@ -84,8 +85,8 @@ class Schedule(object):
             now = time.strftime("%m月%d日%H:%M", time.localtime(time.time()))
             print(F'\r\n----------------------------\r\n{now}：”{name}“任务启动...')
             
-            #运行计划的任务，成功返回真。      *此处只将元组展开成位置参数给要执行的方法*
-            rs, stdout = self.threads[name]['fun'](*self.threads[name]['param'])
+            #运行计划的任务，成功返回真。 
+            rs, stdout = self.threads[name]['fun'](*self.threads[name]['args'], **self.threads[name]['kwds'])
                         
             #调用方法生成到下次的执行任务的间隔秒数
             interval, nextdatetime = Schedule._get_interval(self.threads[name]['schedule'])
