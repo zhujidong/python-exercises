@@ -7,7 +7,7 @@ PORT = 50007              # 任意非特权端口
 try:
     s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind((HOST, PORT))
-    s.listen(1)
+    s.listen(0)
     while True:
         print('waiting for Connect...')
         conn, addr = s.accept()
