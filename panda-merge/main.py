@@ -31,11 +31,13 @@ def close_window():
 
 # 创建主窗口
 root = tk.Tk()
-root.geometry('330x200')
+root.geometry('430x250')
 root.title("盘点表同类合并")
 
-tip = '将导出盘点表中资产名称、账面价值、取得日期三项相同的记录合并为一条，数量/面积与账面价格变为它们的和。\n请一次选择所有要合并的盘点表，它们将被合并为一个文件'
-text = tk.Text(root, height=6, width=40, wrap='word')
+tip = '将资产报表导出的盘点表中资产名称、账面价值、取得日期和账面数量四项相同的记录合并为一条，数量/面积与账面价格变为它们的和。\n\n'
+tip = tip + '请一次选择所有要合并的盘点表，它们将被合并为一个文件。\n'
+tip = tip + '（按Ctrl+鼠标左键多选；按shift+鼠标左键连续选）'
+text = tk.Text(root, height=8, width=50, wrap='word', pady=5)
 text.insert('1.0',tip)
 text.pack()
 
@@ -46,11 +48,11 @@ open_button.pack()
 
 # 创建合并按钮
 merge_button = tk.Button(root, text="开始合并", command=merge_files)
-merge_button.pack(side='left')
+merge_button.pack(side='left', padx=20)
 
 # 创建关闭按钮
-close_button = tk.Button(root, text="退出", command=close_window)
-close_button.pack(side='right')
+close_button = tk.Button(root, text="退出程序", command=close_window)
+close_button.pack(side='right', padx=20)
 
 # 运行主循环
 root.mainloop()

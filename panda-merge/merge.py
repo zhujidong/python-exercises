@@ -25,8 +25,9 @@ def merge(files=[],text=''):
     df = pd.concat(dfs)
 
     text.delete('1.0', tk.END)
-    tip = F"合并前：账面总值：{df['账面价值'].sum()} 数量：{df['账面数量/面积'].sum()} 行数：{len(df)}\n"
+    tip = F"合并前：账面总值：{df['账面价值'].sum().round(2)} 数量：{df['账面数量/面积'].sum().round(2)}\n"
     text.insert('1.0', tip)
+    text.insert('2.0', F"合并前行数：{len(df)}\n\n")
     text.update()
         
     #数重复的数量写入一个新字段；然后去重
@@ -37,8 +38,9 @@ def merge(files=[],text=''):
     df['实有数量/面积'] = df['账面数量/面积']
     df['账面价值'] = df['账面价值']*df['count']
 
-    tip = F"合并后：账面总值：{df['账面价值'].sum()} 数量：{df['账面数量/面积'].sum()} 行数：{len(df)}"
+    tip = F"合并后：账面总值：{df['账面价值'].sum().round(2)} 数量：{df['账面数量/面积'].sum().round(2)}\n"
     text.insert('3.0', tip)
+    text.insert('4.0', F"合并后行数：{len(df)}")
     text.update()
 
     df.to_excel('output.xlsx', index=False, columns=output_columns)
