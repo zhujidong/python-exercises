@@ -12,7 +12,8 @@ import time
 from os import path as ospath
 from sys import path as syspath
 import subprocess as subp
-# subp.SubprocessError  #subprocess 所有异常类的基类
+# subprocess 所有异常类的基类
+#subp.SubprocessError  
 
 # ***mailhelper需在 sys.path 中才能查找到
 from mailhelper.mailhelper import ImapHelper, SmtpHelper
@@ -20,7 +21,8 @@ from mailhelper.mailhelper import ImapHelper, SmtpHelper
 
 class Executor(object):
     """
-    在主机上系统上执行mail发来的在配置文件字典中列出的命令
+    在主机上系统上执行mail发来的（在邮件标题中）命令
+
     """
 
     def __init__(self, config:dict):
@@ -35,10 +37,11 @@ class Executor(object):
         '''
 
         self.config = config
-        self.tempfile = ospath.join(syspath[0], config['tempfile'])
-        ''' 当 self._get_orders()从邮箱取得一个新的命令时，就会重新生成些临时文件，借以记录这条命令被执行的时间。
-            当再次从邮箱中读取新的命令时，会和这个得时文件的生成时间来比较，只有比这个临时文件晚的邮件，才是新发来的命令。
+        self.tempfile = ospath.join(syspath[0], self.config['tempfile'])
+        ''' 当 self._get_orders()从邮箱取得一个新的命令时，就会重新生成此临时文件，借以记录此次命令被执行的时间。
+            当再次从邮箱中读取新的命令时，只有比这个临时文件的日期晚的邮件，才是新发来的命令。
         '''
+
 
     def exec_cmd(self, cmds=None):
         '''
@@ -56,10 +59,12 @@ class Executor(object):
             cmds = self._get_orders()
         rcode = 0
         rmsg = ''
+
         for cmd in cmds:
             #此命令在列表之中
             if cmd in self.config['cmdlist'].keys():
                 cmd = self.config['cmdlist'][cmd]
+                print("执行：", cmd)
                 split_cmd = cmd.split()  #shlex.split() 复杂的也许需要此方法序列化
                 rs = subp.run(split_cmd, stdout=subp.PIPE, stderr=subp.STDOUT, encoding='UTF-8')
                 if rs.returncode!=0:
@@ -89,44 +94,58 @@ class Executor(object):
             orders:list 命令列表。没找到符合条件地返回空
         '''
        
+        i = 0
         orders = []
-        now_stamp = time.time() #当前时间戳
-        local_struct = time.localtime(now_stamp)
-        ''' 当前时间结构，虽然time的altzone、daylight、tzname、timezone常量在加载时确定，
-            但tzset()等作用，可以会不正常，建议用localtime()的tm_zone和tm_gmtoff属性
+
+        #当前时间戳
+        now_stamp = time.time()
+        #当前时间结构化表示
+        now_struct = time.localtime(now_stamp)
+        ''' 虽然time的altzone、daylight、tzname、timezone常量在加载时确定，但tzset()等作用，可能会不正常。
+            建议用localtime()生成的结构化时间的tm_zone和tm_gmtoff属性
         '''
+        
+        #上次执行邮命令的时间戳（临时文件的时间戳）
         try:
-            #时间文件的时间戳，应该是个本地化时间吧
-            last_time = ospath.getmtime(self.tempfile)
+            last_stamp = ospath.getmtime(self.tempfile)
         except:
-            last_time = 0
+            last_stamp = 0
 
-        #读取今天最新的五封邮件头部
+        #读取最新的六封邮件头部（防止垃圾邮件影响要多读几封）
         with ImapHelper(self.config['mailhelper']) as imap:
-            today = time.strftime('%d-%b-%Y', local_struct)
-            #today = "15-Mar-2024"
-            bheads = imap.get_mails('BODY[HEADER]', F'(SINCE "{today}")', 5)
+            #生成当前时间字符串，符合邮件服务器格式
+            now_str = time.strftime('%d-%b-%Y', now_struct)
+            #now_str = "15-Mar-2024"
+            mail_headers = imap.get_mails('BODY[HEADER]', F'(SINCE "{now_str}")', 6)
                 
-        #找到最新的，管理员发送的，半小时内的，大于最后执行时间的（即没有执行过此命令）
-        for bhd in bheads:
-            hd = imap.parse_header(bhd) #解析邮件头
-            s = hd.get('Subject')
-            f = hd.get('From').addresses[0].addr_spec #只要邮件地址
-            t = hd.get('Date')
+        #找到管理员发送、设置的时间内、大于最后执行时间（即没有执行过）的命令
+        for mail_header in mail_headers:
+            header = imap.parse_header(mail_header) #解析邮件头
+            mail_subject = header.get('Subject')
+            mail_from = header.get('From').addresses[0].addr_spec #只要邮件地址
+            mail_date = header.get('Date')
 
-            #将邮件日期时间字符串，转为时间戳
-            hd_struct = time.strptime(t, "%a, %d %b %Y %H:%M:%S %z")
-            t_stamp = time.mktime(hd_struct)
+            #将邮件日期(时间字符串)转为结构化时间，再转为时间戳，
+            mail_struct = time.strptime(mail_date, "%a, %d %b %Y %H:%M:%S %z")
+            mail_stamp = time.mktime(mail_struct)
             #当前时区比邮件时区多了多少？给其加上，转为当前时区时间戳
-            t_stamp += (local_struct.tm_gmtoff-hd_struct.tm_gmtoff)
+            mail_stamp += (now_struct.tm_gmtoff - mail_struct.tm_gmtoff)
             
-            # 是管理员发送的； 距今半小时内的；大于上次读取的邮件时间； 
-            if f in self.config['master'].values() \
-            and (now_stamp-t_stamp)<1800 and t_stamp>last_time:
+            #是管理员发送的; #最近时间内的；#大于上次执行的时间； 
+            if ( mail_from in self.config['master'].values()
+                and now_stamp - mail_stamp < self.config['recent_time']
+                and mail_stamp > last_stamp
+            ):
+                #创建或重写文件，只为用文件时间记录邮件被处理的时间。
                 with open(self.tempfile, 'w') as f:
-                    #创建或重写文件，只为用文件时间记录邮件被处理的时间。
                     pass
-            
-                orders = s.replace(' ','').lower().split("=")
-                break #只要最新的一个邮件
+  
+                _order = mail_subject.replace(' ','').lower().split(self.config['separator'])
+                if _order:
+                    orders.extend(_order)
+                    i += 1
+
+                if i == self.config['latest_mail']:
+                    break
+
         return  orders
