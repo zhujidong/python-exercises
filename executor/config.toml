@@ -4,20 +4,27 @@
 [executor]
 #executor模块所用的字典
 
+#读取最近多少秒内的，管理员发送的最新几条邮件
+recent_time = 1500
+latest_mail = 2
+
+#邮件标题中多个命令的分隔符
+separator = "0"
+
 #此文件是用来记录创建时间,会被修改更新,但不会存入数据
 tempfile = 'Temp.last.runtime.AsTfvZkYxbQlusH.tmp'
 
 
 [executor.master]
-#能够发布命令的邮箱，只有这些发送的才被接受
+#能够发布命令的邮箱，只有这些邮件发送的命令才会被接受
 
-'李四' = '4234251627@qq.com'
+'李四' = 'asdf13423@qq.com'
 '王五' = 'ong@live.com'
 
 
 [executor.cmdlist]
 #只有在列表中的命令才会执行。
-#（只会执行最新的邮件）多条命令在一个邮件主题中用用“=”分开即可
+#邮件主题中要执行多个命令要用separator定义的分隔符隔开
 
 'frp-stop' = 'systemctl stop frpc.service'
 'frp-start' = 'systemctl start frpc.service'
@@ -34,8 +41,8 @@ tempfile = 'Temp.last.runtime.AsTfvZkYxbQlusH.tmp'
 
 display_name = '张三' #此账号发件时显示的名字
 
-account = 'mailusername@163.com'
-password = 'ASSPYNRYHGFMPBIM'
+account = '1MAILUSERDF@163.com'
+password = 'KLDSJFKSDKLFKJLSDFJ'
 
 smtphost = 'smtp.163.com'
 smtpport = 465
