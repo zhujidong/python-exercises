@@ -11,6 +11,8 @@ zhujidong 2024 Copyright(c), WITHOUT WARRANTY OF ANY KIND.
 import time
 from os import path as ospath
 from sys import path as syspath
+
+import shlex
 import subprocess as subp
 # subprocess 所有异常类的基类
 #subp.SubprocessError  
@@ -43,7 +45,7 @@ class Executor(object):
         '''
 
 
-    def exec_cmd(self, cmds=None):
+    def exec_cmd(self, cmds=[]):
         '''
         执行命令(必须是命令列表之中的)
         
@@ -65,8 +67,11 @@ class Executor(object):
             if cmd in self.config['cmdlist'].keys():
                 cmd = self.config['cmdlist'][cmd]
                 print("执行：", cmd)
-                split_cmd = cmd.split()  #shlex.split() 复杂的也许需要此方法序列化
+
+                split_cmd = shlex.split(cmd)
                 rs = subp.run(split_cmd, stdout=subp.PIPE, stderr=subp.STDOUT, encoding='UTF-8')
+                
+                #多条命令中若有一条出错也要返回错误代码
                 if rs.returncode!=0:
                     rcode = rs.returncode
                 rmsg += 'args: ' + ' '.join(rs.args) + '\n'
