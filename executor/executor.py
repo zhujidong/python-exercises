@@ -147,7 +147,8 @@ class Executor(object):
   
                 _order = mail_subject.replace(' ','').lower().split(self.config['separator'])
                 if _order:
-                    orders.extend(_order)
+                    #最新的邮件在队尾，较旧地添加在前面，保证命令按时间的先后顺序执行
+                    orders = _order + orders
                     i += 1
 
                 if i == self.config['latest_mail']:
