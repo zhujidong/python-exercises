@@ -6,7 +6,7 @@ zhujidong 2021 Copyright(c), WITHOUT WARRANTY OF ANY KIND.
 
 '''
 
-
+import re
 import time
 from threading import Timer
 
@@ -33,7 +33,7 @@ class Schedule(object):
 
         '''
 
-    def reg_thread( self, name:str, fun:object, args:tuple, kwds:dict, schedule:dict) -> None:
+    def reg_thread( self, name:str, fun:object, args:list, kwds:dict, schedule:dict) -> None:
         '''
         将一个方法函数，注册为一个计划任务
 
@@ -42,10 +42,10 @@ class Schedule(object):
             
             fun:str,要注册成任务线程的函数方法。
                 *要求此方法返回一个元组，第一个元素为任务状态码，0,正常；第二个元素为任务相关信息（错误信息等）
-            args:tuple,任务线程的位置参数
+            args:list,任务线程的位置参数
             kwds:dict,任务线程的关键字参数
 
-            schedule:dict,任务执行的计划，定义方式见config.ini和config.toml
+            schedule:dict,任务执行的计划，定义方式见config.toml
                 sche:[
                     (1, ['600', '06:00', '22:00']), 
                     (3, ['09:00', '14:00', '17:00']), 
@@ -95,20 +95,14 @@ class Schedule(object):
             if rs==0:
                 self.threads[name]['errors'] = 0
                 info = F'“{name}”任务执行完毕:{stdout}，\n下次计划于{nextdatetime}启动'
-            #任务执行中失败,且要求重试
-            elif self.threads[name]['schedule']['retry'][0]>0:
+            #任务执行中失败,且重试错误次数小于重试次数
+            elif self.threads[name]['errors'] < self.threads[name]['schedule']['retry'][0]:
+                interval = self.threads[name]['schedule']['retry'][1]
+                info = F'”{name}“执行失败：{stdout}\n 任务将在{interval/60}分种后重启...'
                 self.threads[name]['errors'] += 1
-                #没达到重试次数，调整下次执行的间隔为重试间隔
-                if self.threads[name]['errors']  <= self.threads[name]['schedule']['retry'][0]:
-                    interval = self.threads[name]['schedule']['retry'][1]
-                    info = F'”{name}“执行失败：{stdout}\n 任务将在{interval/60}分种后重启...'
-                else:
-                    info = F'”{name}“任务已失败{self.threads[name]["errors"]}次，不再重试，将在下次计划时间（{nextdatetime}）启动。'
-                    self.threads[name]['errors'] = 0
-                    #发送错误报告？
             else:
-                info = F'”{name}“执行失败：{stdout}...\n 将在下次计划时间（{nextdatetime}）启动。'
-                #发送错误报告？
+                info = F'”{name}“执行失败：{stdout}...\n已重试{self.threads[name]['errors']}次，将在下次计划时间（{nextdatetime}）启动。'
+                self.threads[name]['errors'] = 0
 
         #非立即运行的任务，调用得到时间间隔即可
         else:
@@ -217,7 +211,7 @@ class Schedule(object):
         #先在当天中查找下次计划，找到设置 next_stamp，否则置为 None
         next_stamp = None
         #当天有计划，并且是定点执行的
-        if table and ':' in table[0]:
+        if table and type(table[0])==str:
             for tb in table:
                 if tb > time_:
                     next_stamp = time.mktime(time.strptime(F'{date_} {tb}', '%Y-%m-%d %H:%M'))  
@@ -272,40 +266,60 @@ class Schedule(object):
         '''
 
         sche = {} #计划任务
-        retry = [1, 300] #重试规则[次数，间隔秒数]
         run = False
-        week = ['1','2','3','4','5','6','7']
-
+        retry = [0, 0]
+        hhmm = r'^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])$'
+        
         for key, value in config.items():
             if key=='run':
-                #toml读的布尔型
                 if type(value)==bool: 
                     run = value
-                #toml或ini读的字符型，只要不是大小写的true，就为假
-                elif type(value)==str and value.strip().lower()=='true':
-                    run = True
-            elif key=='retry':
-                #从toml读取的列表，并且有两个元素
-                if type(value)==list and len(value)==2: 
-                    retry = value
-                #如果是乱七八糟的字符串
-                elif type(value)==str:
-                    r = value.replace(' ','').split(",")
-                    if len(r)==2 and r[0].isdigit() and r[1].isdigit():
-                        retry = [int(r[0]), int(r[1])]
-            else:
-                #去除空格，如果不是列表，转化为列表
-                if type(value)==list:
-                    value =[v.replace(' ', '') for v in value]
                 else:
-                    value = value.replace(' ','').split(",")
+                    print(F"计划设置{key}：‘run’应该是个bool值")
+                    raise
+            
+            elif key=='retry':
+                if( type(value)==list and len(value)==2 and
+                    type(value[0])==int and type(value[1])==int and
+                    value[0]>=0 and value[1]>=0
+                ):
+                    retry = value
+                else:
+                    print(F"计划设置{key}：‘rety’应该两个整形元素的列表，且不小于0")
+                    raise
 
-                split_key = key.replace(' ','').split(",")
-                for skey in split_key:
-                    if skey in week:
-                        sche[int(skey)] = value
+            else:#key == 1,2,3,4,5,6,7 ? 
+                subkey = key.replace(' ','').split(",")
+                for k in subkey:
+                    if k not in '1234567':    
+                        print("计划设置{subkey}：只有‘run’、‘retry’、‘1-7单字或逗号分隔的任意组合’选项")
+                        raise
+
+                if type(value)==str: 
+                    value = value.replace(' ','').split(",")
+                
+                right = False
+                if( type(value)==list and len(value)==3 and
+                    type(value[0])==int and type(value[1])==str and type(value[2])==str and
+                    re.match(hhmm, value[1]) and re.match(hhmm, value[2])
+                ):
+                    right = True
+                
+                elif type(value)==list and len(value)>0 and type(value[0])==str:
+                    right = True
+                    for e in value:
+                        if type(e)!=str or not re.match(hhmm, e):
+                            right = False 
+
+                if not right:
+                    print(F"计划时间{value}：只能是[数字，两个时间区间]的列表。或 全是hh:mm时间的列表，或一整个字符串格。时分一位数需加前导0\n") 
+                    raise
+
+                for k in subkey:
+                    sche[int(k)] = value
+                                
         #排序，生成列表
         sche = sorted(sche.items(), key=lambda x:x[0])
-        schedule = {'sche':sche, 'retry':retry, 'run': run}
+        schedule = {'run': run, 'retry':retry, 'sche':sche }
 
         return schedule

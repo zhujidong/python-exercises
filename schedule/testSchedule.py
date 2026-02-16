@@ -9,30 +9,25 @@ def read_config():
     '''
     计划任务的所需的配置文件格式
     '''
-    cfg = ConfigReader() #为空默认是程序启动目录下config.ini
-    ini = cfg.getdict("scheduleA")
-    print("从ini配置文件读出的计划格式是:\r\n", ini)
 
-    tom = TOMLReader()['scheduleA']
+    tom = TOMLReader()['scheduleB']
     print("从tom配置文件读出的计划格式是:\r\n", tom)
-    return ini,tom
+    return tom
 
 
 def trans():
-    ini, tom = read_config()
-    tini = Schedule._trans_schedule(ini)
+    tom = read_config()
     ttom = Schedule._trans_schedule(tom)
 
-    print("ini:\n",tini)
     print("tom:\n",ttom)
-    return tini, ttom
+    return ttom
 
 def sche_time():
     '''
     测试生成计划下次运行时间
     '''
-    tini, ttom = trans()
-    interval, nextdatetime =  Schedule._get_interval(tini)
+    ttom = trans()
+    interval, nextdatetime =  Schedule._get_interval(ttom)
     print("\r\n测试调用方法生成下次计划运行时间：")
     print("下次计划间隔：", interval)
     print("下次计划时间：", time.strftime("%m月%d日%H:%M", nextdatetime))
@@ -54,9 +49,9 @@ def task1(p):
 
     return rs, err
 
-def task2(kw1,kw2='默认'):
+def task2(kw1=None,kw2='默认'):
     rs = random.randint(0, 1)
-    print(F"\r\n这是任务二，参数kw1:{kw1}，kw2{kw2}")
+    print(F"\r\n这里任务二，位置参数kw1:～{kw1}， 关键字参数kw2：～{kw2}")
     print("任务将返回：",rs)
     if rs==1:
         err = '任务二随机失败'
@@ -67,11 +62,11 @@ def task2(kw1,kw2='默认'):
 
 def sche():
     sche = Schedule()
-    s1 = {'retry': [1, 10], 'run': True, '1,2,3,4,5,6,7': ['16:45', '16:47', '16:55']}
-    s2 = {'retry': [0, 10], 'run': False, '1,2,3,4,5,6,7': ['20', '16:40', '17:55']}
+    s1 = {'retry': [0, 2], 'run': True, '1,2,3,4,5,6,7': ['16:45', '16:47', '21:04']}
+    s2 = {'retry': [0, 0], 'run': False, '1,2,3,4,5,6,7': [8, '16:40', '23:55']}
 
-    sche.reg_thread('taskone', task1, ('传入位置参数',),{}, s1)
-    sche.reg_thread('二', task2, ("这是kw1",), {'kw2':'传入关键字参数kw2'}, s2)
+    sche.reg_thread('taskone', task1, ['传入位置参数'],{}, s1)
+    #sche.reg_thread('二', task2, ["以位置传入参数"], {'kw2':'位置传关键字'}, s2)
 
     while True:
         str = input()
@@ -106,7 +101,6 @@ if __name__ == '__main__':
     from sys import path as syspath
     #将最先调用python解释器的脚本,即启动程序所在目录的上级目录,加入到系统查找路径
     syspath.append(ospath.dirname(ospath.dirname(__file__)))
-    from configreader.configreader import ConfigReader
     from configreader.tomlreader import TOMLReader
 
     #read_config()
