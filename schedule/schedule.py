@@ -47,7 +47,7 @@ class Schedule(object):
 
             schedule:dict,任务执行的计划，定义方式见config.toml
                 sche:[
-                    (1, ['600', '06:00', '22:00']), 
+                    (1, [ 600, '06:00', '22:00']), 
                     (3, ['09:00', '14:00', '17:00']), 
                     (7, ['08:30', '10:30', '13:30', '15:30', '17:30', '20:00']) ],
                 retry:[1,300], #线程执行失败时，重试次数与时间间隔（默认重试1次，隔300秒后重试）
@@ -94,7 +94,7 @@ class Schedule(object):
             #根据任务执行的返回结果，调整下次执行间隔和提示信息
             if rs==0:
                 self.threads[name]['errors'] = 0
-                info = F'“{name}”任务执行完毕:{stdout}，\n下次计划于{nextdatetime}启动'
+                info = F'“{name}”任务执行完毕:{stdout} \n下次计划于{nextdatetime}启动'
             #任务执行中失败,且重试错误次数小于重试次数
             elif self.threads[name]['errors'] < self.threads[name]['schedule']['retry'][0]:
                 interval = self.threads[name]['schedule']['retry'][1]
@@ -258,7 +258,7 @@ class Schedule(object):
         
         :return:dict，三个键：计划时间，重试规则，是否立即运行
             sche: #计划时间
-                [(1, ['600', '06:00', '22:00']), 
+                [(1, [ 600, '06:00', '22:00']), 
                  (3, ['09:00', '14:00', '17:00']), 
                  (7, ['08:30', '10:30', '13:30', '15:30', '17:30', '20:00']) ],
             retry:[1,300], #线程执行失败时，重试次数与时间间隔（默认重试1次，隔300秒后重试）
