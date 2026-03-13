@@ -33,7 +33,7 @@ class Schedule(object):
 
         '''
 
-    def reg_thread( self, name:str, fun:object, args:list, kwds:dict, schedule:dict) -> None:
+    def reg_thread( self, name:str, fun:object, args:tuple, kwds:dict, schedule:dict) -> None:
         '''
         将一个方法函数，注册为一个计划任务
 
@@ -42,12 +42,12 @@ class Schedule(object):
             
             fun:str,要注册成任务线程的函数方法。
                 *要求此方法返回一个元组，第一个元素为任务状态码，0,正常；第二个元素为任务相关信息（错误信息等）
-            args:list,任务线程的位置参数
+            args:tuple,任务线程的位置参数
             kwds:dict,任务线程的关键字参数
 
-            schedule:dict,任务执行的计划，定义方式见config.toml
+            schedule:dict,任务执行的计划，定义方式见config.ini和config.toml
                 sche:[
-                    (1, ['600', '06:00', '22:00']), 
+                    (1, [600, '06:00', '22:00']), 
                     (3, ['09:00', '14:00', '17:00']), 
                     (7, ['08:30', '10:30', '13:30', '15:30', '17:30', '20:00']) ],
                 retry:[1,300], #线程执行失败时，重试次数与时间间隔（默认重试1次，隔300秒后重试）
@@ -94,26 +94,25 @@ class Schedule(object):
             #根据任务执行的返回结果，调整下次执行间隔和提示信息
             if rs==0:
                 self.threads[name]['errors'] = 0
-                info = F'“{name}”任务执行完毕:{stdout}，\n下次计划于{nextdatetime}启动'
+                info = F'{now}的“{name}”任务执行完毕:\n{stdout}\n“{name}”下次计划于{nextdatetime}启动。'
             #任务执行中失败,且重试错误次数小于重试次数
             elif self.threads[name]['errors'] < self.threads[name]['schedule']['retry'][0]:
                 interval = self.threads[name]['schedule']['retry'][1]
-                info = F'”{name}“执行失败：{stdout}\n 任务将在{interval/60}分种后重启...'
+                info = F'“{now}的{name}”执行失败：\n{stdout}\n任务将在{interval/60}分种后重启...'
                 self.threads[name]['errors'] += 1
             else:
-                info = F'”{name}“执行失败：{stdout}...\n已重试{self.threads[name]['errors']}次，将在下次计划时间（{nextdatetime}）启动。'
+                info = F'“{now}的{name}”执行失败：\n{stdout}\n已重试{self.threads[name]['errors']}次，将在下次计划时间（{nextdatetime}）启动。'
                 self.threads[name]['errors'] = 0
 
         #非立即运行的任务，调用得到时间间隔即可
         else:
             interval, nextdatetime = Schedule._get_interval(self.threads[name]['schedule'])
             nextdatetime = time.strftime("%m月%d日%H:%M", nextdatetime)
-            info = F'“{name}”任务将按计划将于{nextdatetime}运行。'
+            info = F'“{name}”任务注册完成，将按计划于{nextdatetime}运行。'
+        print(info,'\r\n----------------------------\r\n')
 
         #实际是把自己生成一个线程，调用被注册的计划任务
-        print(info,'\r\n----------------------------\r\n')
         self.threads[name]['handle'] = Timer(interval, self._run_thread, args=(name, True))
-                                       #计划时间后才运行，所以通常给本方法传递true以立即运行任务
         self.threads[name]['handle'].start()
         return None
 
@@ -258,7 +257,7 @@ class Schedule(object):
         
         :return:dict，三个键：计划时间，重试规则，是否立即运行
             sche: #计划时间
-                [(1, ['600', '06:00', '22:00']), 
+                [(1, [600, '06:00', '22:00']), 
                  (3, ['09:00', '14:00', '17:00']), 
                  (7, ['08:30', '10:30', '13:30', '15:30', '17:30', '20:00']) ],
             retry:[1,300], #线程执行失败时，重试次数与时间间隔（默认重试1次，隔300秒后重试）
@@ -269,7 +268,7 @@ class Schedule(object):
         run = False
         retry = [0, 0]
         hhmm = r'^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])$'
-        
+
         for key, value in config.items():
             if key=='run':
                 if type(value)==bool: 
@@ -277,7 +276,7 @@ class Schedule(object):
                 else:
                     print(F"计划设置{key}：‘run’应该是个bool值")
                     raise
-            
+
             elif key=='retry':
                 if( type(value)==list and len(value)==2 and
                     type(value[0])==int and type(value[1])==int and
@@ -287,14 +286,13 @@ class Schedule(object):
                 else:
                     print(F"计划设置{key}：‘rety’应该两个整形元素的列表，且不小于0")
                     raise
-
+                    
             else:#key == 1,2,3,4,5,6,7 ? 
                 subkey = key.replace(' ','').split(",")
                 for k in subkey:
                     if k not in '1234567':    
                         print("计划设置{subkey}：只有‘run’、‘retry’、‘1-7单字或逗号分隔的任意组合’选项")
                         raise
-
                 if type(value)==str: 
                     value = value.replace(' ','').split(",")
                 
@@ -317,7 +315,6 @@ class Schedule(object):
 
                 for k in subkey:
                     sche[int(k)] = value
-                                
         #排序，生成列表
         sche = sorted(sche.items(), key=lambda x:x[0])
         schedule = {'run': run, 'retry':retry, 'sche':sche }
