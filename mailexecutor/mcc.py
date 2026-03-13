@@ -16,7 +16,7 @@ if __name__ == '__main__':
     from configreader.tomlreader import TOMLReader
     from executor import Executor
 
-    _, info = Executor(TOMLReader()['executor']).exec_cmd()
+    _, info = Executor(TOMLReader()['executor']).exec_cmd(['dbus','cups'])
     print(info)
 
     # my-mcc.service 单元注将本脚本注册为系统任务（非自动启动）。

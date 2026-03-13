@@ -50,7 +50,9 @@ class Executor(object):
         执行命令(必须是命令列表之中的)
         
         :param:
-            cmds:列表，需是命令列表中定义好的。缺省调用self._get_orders()从邮件中读取
+            cmds:缺省调用self._get_orders()从邮件中读取。
+                ＊此命令不是真正的命令，而是配置文件cmdlist段中定义的变量，
+                实际命令可以写在一个字符串中，也可以是命令和参数的列表。
 
         :return:
             rcode:int，命令退出状态码，0正常，-N 被信息N中断
@@ -68,8 +70,10 @@ class Executor(object):
                 cmd = self.config['cmdlist'][cmd]
                 print("执行：", cmd)
 
-                split_cmd = shlex.split(cmd)
-                rs = subp.run(split_cmd, stdout=subp.PIPE, stderr=subp.STDOUT, encoding='UTF-8')
+                #如果是一长串字符串，要折分出命令和参数组成的列表
+                if type(cmd)==str:
+                    cmd = shlex.split(cmd)
+                rs = subp.run(cmd, stdout=subp.PIPE, stderr=subp.STDOUT, encoding='UTF-8')
                 
                 #多条命令中若有一条出错也要返回错误代码
                 if rs.returncode!=0:
@@ -77,6 +81,7 @@ class Executor(object):
                 rmsg += 'args: ' + ' '.join(rs.args) + '\n'
                 rmsg += 'code: ' + str(rs.returncode) + '\n'
                 rmsg += 'stdout: ' + rs.stdout +'\n\n'
+                print(rcode,rmsg) 
             else:
                 rmsg += F'{cmd}命令不存在\n'
             time.sleep(5)
@@ -84,10 +89,10 @@ class Executor(object):
         if not rmsg:
             rmsg ='当前没有需要执行的命令'
         else:
-            with SmtpHelper(self.config['mailhelper']) as smtp: 
-                #将执行结果发送给所有的管理员
-                smtp.send_mail( self.config['master'], '#'.join(cmds)+'执行结果', rmsg )
- 
+            # with SmtpHelper(self.config['mailhelper']) as smtp: 
+            #     #将执行结果发送给所有的管理员
+            #     smtp.send_mail( self.config['master'], '#'.join(cmds)+'执行结果', rmsg )
+            pass
         return rcode, rmsg
 
 
