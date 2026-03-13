@@ -95,6 +95,7 @@ class Schedule(object):
             if rs==0:
                 self.threads[name]['errors'] = 0
                 info = F'{now}的“{name}”任务执行完毕:\n{stdout}\n“{name}”下次计划于{nextdatetime}启动。'
+
             #任务执行中失败,且重试错误次数小于重试次数
             elif self.threads[name]['errors'] < self.threads[name]['schedule']['retry'][0]:
                 interval = self.threads[name]['schedule']['retry'][1]
