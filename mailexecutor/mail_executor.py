@@ -20,7 +20,6 @@ from subprocess import SubprocessError
 from imaplib import IMAP4
 from smtplib import SMTPException
 
-# ***需在 sys.path 中才能查找到
 from mailhelper.mailhelper import ImapHelper, SmtpHelper
 from configreader.tomlreader import TOMLReader
 
@@ -197,4 +196,5 @@ class MailExecutor(object):
         finally:
             print(err)
 
-
+if __name__ == '__main__':
+    MailExecutor().run()
