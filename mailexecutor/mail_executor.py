@@ -14,10 +14,15 @@ import time
 
 import shlex
 import subprocess
-#subprocess.SubprocessError 所有异常类的基类
 
-# ***mailhelper需在 sys.path 中才能查找到
+import traceback
+from subprocess import SubprocessError
+from imaplib import IMAP4
+from smtplib import SMTPException
+
+# ***需在 sys.path 中才能查找到
 from mailhelper.mailhelper import ImapHelper, SmtpHelper
+from configreader.tomlreader import TOMLReader
 
 
 class MailExecutor(object):
@@ -41,11 +46,11 @@ class MailExecutor(object):
 
         if config == {}:
             self.config = MailExecutor.CONFIG
-        else
+        else:
             self.config = config
 
         #临时文件，只是取它的更时间用，每次调用本方法会，都会写一下此文件，更新其时间
-        self.tempfile = ospath.join(syspath[0], self.config['tempfile'])
+        self.tempfile = os.path.join(sys.path[0], self.config['tempfile'])
 
 
     def fetch_mails(self) -> list:
@@ -68,7 +73,7 @@ class MailExecutor(object):
         """上次检查邮件命令的时间戳（临时文件的时间戳）: 当调用本方法，就会写一下临时文件，表示这个时
         间点的之前的邮件命令都被执行过（不管成功与否），只有大于此时间的邮件，才会再次被返回 """
         try:
-            last_stamp = ospath.getmtime(self.tempfile)
+            last_stamp = os.path.getmtime(self.tempfile)
         except:
             last_stamp = 0
 
@@ -80,7 +85,7 @@ class MailExecutor(object):
         #找到管理员发送、设置的时间内（各种原因时间太久没执行也做废）没有执行过的命令
         for mail_header in mail_headers:
             header = imap.parse_header(mail_header) #解析邮件头
-            mail_subject = header.get('Subject', '')
+            mail_subject = header.get('Subject','').replace(' ','').lower()
             mail_from = header.get('From').addresses[0].addr_spec #只要邮件地址
             mail_date = header.get('Date')
 
@@ -94,7 +99,7 @@ class MailExecutor(object):
             if( mail_from in self.config['master'].values()  #管理员列表中的
                 and now_stamp - mail_stamp < self.config['recent_time']  #没有超时
                 and mail_stamp > last_stamp  #没有执行过
-                and mail_subject := mail_subject.replace(' ','').lower()  #有主题
+                and mail_subject #有主题
             ):
                 #较早发的邮件插在前面先执行，较晚（最近发的）在后面，后执行
                 commands = mail_subject.split(self.config['separator']) + commands
@@ -116,42 +121,80 @@ class MailExecutor(object):
                 ＊此命令不是真正的命令，而是配置文件cmdlist段中定义的变量，
                 实际命令可以写在一个字符串中，也可以是命令和参数的列表。
         :return:
-            result：列表，元素是subprocess.run() 的返回值
+            results：列表，元素是subprocess.run() 的返回的对像。或者字符串。
         '''
 
-        result = []
+        results = []
         for cmd in commands:
             if cmd in self.config['cmdlist'].keys():
                 real_cmd = self.config['cmdlist'][cmd]
+                if type(real_cmd)==str:
+                    #一个字符串形式，不是数据，要拆成数组形式
+                    real_cmd = shlex.split(real_cmd)
+                
+                rs = subprocess.run(
+                    real_cmd, 
+                    stdout=subprocess.PIPE, 
+                    stderr=subprocess.PIPE, 
+                    encoding='UTF-8',
+                    timeout=30
+                )
+                results.append(rs)
+            elif cmd=='help':
+                results.append('\n－－－ list －－－\n')
+                for k, v in self.config['cmdlist'].items():
+                    results.append(F"{k} ->\n{v}\n\n")
             else:
-                result.append(F"{cmd}命令不存在\n")
-            
-            #如果是一长串字符串，要折分出命令和参数组成的列表
-            if type(real_cmd)==str:
-                real_cmd = shlex.split(real_cmd)
-            rs = subprocess.run(
-                real_cmd, 
-                stdout=subp.PIPE, 
-                stderr=subp.PIPE, 
-                encoding='UTF-8',
-                timeout=30
-            )
-            result.append(rs)
-        return result
+                results.append(F"\n{cmd}》\n命令不存在\n\n")
+        return results
 
 
-    def send_result(self, result:list, recipient:dict):
-        '''将执行结果通过邮件返回（核心步骤4：返回）'''
+    def send_results(self, results:list, recipient:dict={}):
+        '''
+        将命令执行结果通过邮件发送
+        
+        :param:
+            results:命令执行结果列表，元素是subprocess.CompletedProcess或字符串
+            recipient:收件人字典，名字为键，地址为值。
+                ＊默认发送给所以有权执行邮件命令邮件地址
+        :return:
+
+        '''
+        if recipient=={}:
+            recipient = self.config['master']
+        
+        msg = ''
+        for rs in results:
+            if type(rs)==str:
+                msg += rs
+            else:
+                msg += F"\n》{' '.join(rs.args)}》\n{'执行成功:' if rs.returncode==0 else '执行失败:'}\n"
+                msg += rs.stdout + rs.stderr + '\n'
+
         with SmtpHelper(self.config['mailhelper']) as smtp: 
-                #将执行结果发送给所有的管理员
-                smtp.send_mail( self.config['master'], '#'.join(cmds)+'执行结果', rmsg )
+            smtp.send_mail( recipient, '邮件命令执行结果', msg )
 
 
     def run(self):
-        """主流程：拉取→解析→执行→返回"""
-        emails = self.fetch_emails()
-        for email in emails:
-            cmd = self.parse_command(email.content)
-            result = self.execute_command(cmd)
-            self.send_result(result, email.sender)
-    
+        err=''
+        try:
+            print('检查邮件，看是否有需要执行的命令...')
+            commands = self.fetch_mails()
+            if commands:
+                print('正在执行，结果将通过邮件发送...')            
+                results = self.execute_commands(commands)
+                self.send_results(results)
+            else:
+                print('没有要执行的命令')
+        except SubprocessError:
+            err = F"》执行命令子进程错误:{traceback.format_exc()}"
+        except IMAP4.error:
+            err = F"》收件服务出错:{traceback.format_exc()}"
+        except SMTPException:
+            err = F"》发件服务出错:{traceback.format_exc()}"
+        except Exception:
+            err = F"》罕见错误:{traceback.format_exc()}"
+        finally:
+            print(err)
+
+
