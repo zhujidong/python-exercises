@@ -1,55 +1,52 @@
 # -*- coding:utf_8 -*-
 
 
-[executor]
+
+[mailexecutor]
 #executor模块所用的字典
 
 #读取最近多少秒内的，管理员发送的最新几条邮件
 recent_time = 1500
 latest_mail = 2
 
-#邮件标题中多个命令的分隔符
-separator = "0"
-
 #此文件是用来记录创建时间,会被修改更新,但不会存入数据
 tempfile = 'Temp.last.runtime.AsTfvZkYxbQlusH.tmp'
 
-
-[executor.master]
-#能够发布命令的邮箱，只有这些邮件发送的命令才会被接受
-
-'李四' = 'asdf13423@qq.com'
-'王五' = 'ong@live.com'
+#邮件标题中多个命令的分隔符
+separator = "0"
 
 
-[executor.cmdlist]
+
+[mailexecutor.cmdlist]
 #只有在列表中的命令才会执行。
 #邮件主题中要执行多个命令要用separator定义的分隔符隔开
 
 dbus = "systemctl status dbus.service"
-cups = ['systemctl', 'status', 'dbus.service']
+cups = ['systemctl', 'status', 'cupss.service']
 
 'frp-stop' = 'systemctl stop frpc.service'
 'frp-start' = 'systemctl start frpc.service'
 'frp-status' = 'systemctl status frpc.service'
 
-'rdp-stop' = 'systemctl stop xrdp.service'
-'rdp-start' = 'systemctl start xrdp.service'
-'rdp-status' = 'systemctl status xrdp.service'
 
 
-[executor.mailhelper]
+[mailexecutor.master]
+#能够发布命令的邮箱，只有这些邮件发送的命令才会被接受
+#执行结果也会返回以下所有邮箱
+'李四' = '66461627@qq.com'
+'王五' = 'ong@live.com'
+
+
+
+[mailexecutor.mailhelper]
 #executor模块中调用的mailhelper模块所用的字典
 #也可以将其它mailhelper配置,以'mailhelper'为键名添加到executor字典中,再传给executor模块中的类
 
 display_name = '张三' #此账号发件时显示的名字
-
-account = '1MAILUSERDF@163.com'
-password = 'KLDSJFKSDKLFKJLSDFJ'
-
+account = 'gasdgddr@163.com'
+password = 'dsSADVy8ewN7G8V'
 smtphost = 'smtp.163.com'
 smtpport = 465
-
 imaphost = 'imap.163.com'
 imapport = 993
 #-----------------------------
