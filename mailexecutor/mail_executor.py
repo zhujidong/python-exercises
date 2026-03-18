@@ -20,6 +20,7 @@ from subprocess import SubprocessError
 from imaplib import IMAP4
 from smtplib import SMTPException
 
+#sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from mailhelper.mailhelper import ImapHelper, SmtpHelper
 from configreader.tomlreader import TOMLReader
 
@@ -57,7 +58,7 @@ class MailExecutor(object):
         读取最新的6封邮件的头信息，将符合条件的命令邮件标题，拆分成命令列表
 
         :return:
-            orders:list 命令列表。没找到符合条件地返回空
+            commands:list 命令列表。没找到符合条件地返回空
                 *最近发的（即最后发送的）在列表的前面
         '''
        
@@ -125,24 +126,35 @@ class MailExecutor(object):
 
         results = []
         for cmd in commands:
-            if cmd in self.config['cmdlist'].keys():
-                real_cmd = self.config['cmdlist'][cmd]
-                if type(real_cmd)==str:
-                    #一个字符串形式，不是数据，要拆成数组形式
-                    real_cmd = shlex.split(real_cmd)
-                
-                rs = subprocess.run(
-                    real_cmd, 
-                    stdout=subprocess.PIPE, 
-                    stderr=subprocess.PIPE, 
-                    encoding='UTF-8',
-                    timeout=30
-                )
-                results.append(rs)
+            
+            #将命令和参数分开
+            cmd_h = cmd.split(' ',1)[0]
+            args = cmd.removeprefix(cmd_h)
+            
+            if cmd_h in self.config['cmdlist'].keys():
+                cmd_str = self.config['cmdlist'][cmd_h]
+
+                #没参数但命令串中有参数；有参数但命令串没参数
+                if (args=='' and '{args}' in cmd_str) \
+                or (args!='' and '{args}' not in cmd_str):
+                    results.append(F"\n{cmd}》\n参数数量错误\n\n")
+                else:
+                    #合法的命令，但有参数的要处理一下
+                    if args!='':
+                        cmd_str = cmd_str.format(args=args)
+                                
+                    rs = subprocess.run(
+                        shlex.split(cmd_str), 
+                        stdout=subprocess.PIPE, 
+                        stderr=subprocess.PIPE, 
+                        encoding='UTF-8',
+                        timeout=30
+                    )
+                    results.append(rs)
             elif cmd=='help':
                 results.append('\n－－－ list －－－\n')
-                for k, v in self.config['cmdlist'].items():
-                    results.append(F"{k} ->\n{v}\n\n")
+                for v in self.config['cmdhelp'].values():
+                    results.append(F"{v}\n\n")
             else:
                 results.append(F"\n{cmd}》\n命令不存在\n\n")
         return results

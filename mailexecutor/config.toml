@@ -19,15 +19,18 @@ separator = "0"
 
 [mailexecutor.cmdlist]
 #只有在列表中的命令才会执行。
-#邮件主题中要执行多个命令要用separator定义的分隔符隔开
 
-dbus = "systemctl status dbus.service"
-cups = ['systemctl', 'status', 'cupss.service']
+cups = "systemctl status cups.service"
+ls = "ls"
 
-'frp-stop' = 'systemctl stop frpc.service'
-'frp-start' = 'systemctl start frpc.service'
-'frp-status' = 'systemctl status frpc.service'
+# 有参数的命令
+dbus = "systemctl {args} dbus.service" 
 
+
+
+[mailexecutor.cmdhelp]
+'dbus'= "dbus start|stop|status 控制dbus服务"
+cups = "cups 显示cups服务状态"
 
 
 [mailexecutor.master]
