@@ -85,7 +85,7 @@ class MailExecutor(object):
         #找到管理员发送、设置的时间内（各种原因时间太久没执行也做废）没有执行过的命令
         for mail_header in mail_headers:
             header = imap.parse_header(mail_header) #解析邮件头
-            mail_subject = header.get('Subject','').replace(' ','').lower()
+            mail_subject = header.get('Subject','').strip().lower()
             mail_from = header.get('From').addresses[0].addr_spec #只要邮件地址
             mail_date = header.get('Date')
 
@@ -96,13 +96,13 @@ class MailExecutor(object):
             mail_stamp += (now_struct.tm_gmtoff - mail_struct.tm_gmtoff)
             
             #符合条件的命令邮件 
-            if( mail_from in self.config['master'].values()  #管理员列表中的
+            if( mail_from in self.config['master'].values()  #发件人在管理员列表中的
                 and now_stamp - mail_stamp < self.config['recent_time']  #没有超时
                 and mail_stamp > last_stamp  #没有执行过
                 and mail_subject #有主题
             ):
                 #较早发的邮件插在前面先执行，较晚（最近发的）在后面，后执行
-                commands = mail_subject.split(self.config['separator']) + commands
+                commands = mail_subject + commands
                 i += 1
                 if i == self.config['latest_mail']: #只要执行最后的几个邮件命令
                     break
@@ -127,31 +127,31 @@ class MailExecutor(object):
         results = []
         for cmd in commands:
             
-            #将命令和参数分开
-            cmd_h = cmd.split(' ',1)[0]
-            args = cmd.removeprefix(cmd_h)
+            cmd = cmd.split(self.config['separator'])
+            exe = cmd[0]
+            args = ' '.join(cmd[1:])
             
-            if cmd_h in self.config['cmdlist'].keys():
-                cmd_str = self.config['cmdlist'][cmd_h]
+            if exe in self.config['cmdlist'].keys():
+                exe_str = self.config['cmdlist'][exe]
 
                 #没参数但命令串中有参数；有参数但命令串没参数
-                if (args=='' and '{args}' in cmd_str) \
-                or (args!='' and '{args}' not in cmd_str):
-                    results.append(F"\n{cmd}》\n参数数量错误\n\n")
+                if (args=='' and '{args}' in exe_str) \
+                or (args!='' and '{args}' not in exe_str):
+                    results.append(F"\n{' '.join(cmd)}》\n参数数量错误\n\n")
                 else:
                     #合法的命令，但有参数的要处理一下
                     if args!='':
-                        cmd_str = cmd_str.format(args=args)
+                        exe_str = exe_str.format(args=args)
                                 
                     rs = subprocess.run(
-                        shlex.split(cmd_str), 
+                        shlex.split(exe_str), 
                         stdout=subprocess.PIPE, 
                         stderr=subprocess.PIPE, 
                         encoding='UTF-8',
                         timeout=30
                     )
                     results.append(rs)
-            elif cmd=='help':
+            elif exe=='help':
                 results.append('\n－－－ list －－－\n')
                 for v in self.config['cmdhelp'].values():
                     results.append(F"{v}\n\n")
@@ -210,3 +210,4 @@ class MailExecutor(object):
 
 if __name__ == '__main__':
     MailExecutor().run()
+    

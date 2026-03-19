@@ -12,8 +12,8 @@ latest_mail = 2
 #此文件是用来记录创建时间,会被修改更新,但不会存入数据
 tempfile = 'Temp.last.runtime.AsTfvZkYxbQlusH.tmp'
 
-#邮件标题中多个命令的分隔符
-separator = "0"
+#命令与参数的分隔符
+separator = " "
 
 
 
