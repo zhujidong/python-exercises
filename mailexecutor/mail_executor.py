@@ -175,6 +175,7 @@ class MailExecutor(object):
         if recipient=={}:
             recipient = self.config['master']
         
+        rs = ''
         msg = ''
         for rs in results:
             if type(rs)==str:
@@ -182,9 +183,12 @@ class MailExecutor(object):
             else:
                 msg += F"\n》{' '.join(rs.cmd)}》\n{'执行成功:' if rs.returncode==0 else '执行失败:'}\n"
                 msg += rs.stdout + rs.stderr + '\n'
-
+        if type(rs)==str:
+            title = ''
+        else:
+            title = ' '.join(rs.cmd)
         with SmtpHelper(self.config['mailhelper']) as smtp: 
-            smtp.send_mail( recipient, '邮件命令执行结果', msg )
+            smtp.send_mail( recipient, F'{title}执行结果', msg )
 
 
     def run(self):
