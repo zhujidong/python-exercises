@@ -102,7 +102,7 @@ class MailExecutor(object):
                 and mail_subject #有主题
             ):
                 #较早发的邮件插在前面先执行，较晚（最近发的）在后面，后执行
-                commands = mail_subject + commands
+                commands = [mail_subject] + commands
                 i += 1
                 if i == self.config['latest_mail']: #只要执行最后的几个邮件命令
                     break
@@ -150,6 +150,7 @@ class MailExecutor(object):
                         encoding='UTF-8',
                         timeout=30
                     )
+                    rs.cmd = cmd
                     results.append(rs)
             elif exe=='help':
                 results.append('\n－－－ list －－－\n')
@@ -179,7 +180,7 @@ class MailExecutor(object):
             if type(rs)==str:
                 msg += rs
             else:
-                msg += F"\n》{' '.join(rs.args)}》\n{'执行成功:' if rs.returncode==0 else '执行失败:'}\n"
+                msg += F"\n》{' '.join(rs.cmd)}》\n{'执行成功:' if rs.returncode==0 else '执行失败:'}\n"
                 msg += rs.stdout + rs.stderr + '\n'
 
         with SmtpHelper(self.config['mailhelper']) as smtp: 
@@ -210,4 +211,3 @@ class MailExecutor(object):
 
 if __name__ == '__main__':
     MailExecutor().run()
-    
